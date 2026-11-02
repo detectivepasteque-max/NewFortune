@@ -3,16 +3,20 @@
  * ---------------------------------------------------------------------
  * Carrière militaire (légionnaire, militaire du rang, sous-officier,
  * officier, officier supérieur, gendarme) et métiers de secours
- * (pompier, agent de sécurité) : opération extérieure, blessures,
- * permissions, fin de contrat, bizutage, décoration, stages,
- * reconversion, couple à distance, vie de caserne, recrutement à la rue.
+ * (pompier, agent de sécurité) : opération extérieure et ses missions
+ * (la mort y est une issue possible, voir docs/03 « Issues mortelles »),
+ * blessures, permissions, fin de contrat, bizutage, décoration, stages,
+ * reconversion, couple à distance, vie de caserne, recrutement à la rue,
+ * saut d'entraînement, franchissement, forcené.
  * Famille 'travail'. Les ids de métiers sont ceux de data/metiers.js
  * (secteur 'armee' et 'securite') ; les militaires sont logés en
  * caserne (logement 'caserne').
  *
  * Chaînes (un choix pose un drapeau et/ou programme une suite) :
- *   arm_opex          → arm_retour_opex         (drapeau retour_opex ; la suite
- *                                                revient au tirage tant que le drapeau tient)
+ *   arm_opex          → arm_mission_*           (drapeau en_opex ; une ou deux missions mises
+ *                     → arm_opex_retour          en tête de la file du mois, puis le retour, qui
+ *                     → arm_retour_opex          pose parfois retour_opex ; cette suite revient
+ *                                                au tirage tant que le drapeau tient)
  *   arm_bizutage      → arm_bizutage_suite      (drapeau bizutage_signale + programmer)
  *   arm_fin_contrat   → arm_reconversion        (drapeau reconversion_armee + programmer,
  *                                                données { salaire })
@@ -48,35 +52,196 @@
   function relationP(s, delta) { var p = partenaire(s); if (p) p.relation = U.clamp(p.relation + delta, 0, 100); }
   /** Ligne de journal pour une prime */
   function journalPrime(libelle, montant) { return libelle + ' : ' + U.euros(montant) + '.'; }
+  /** Poids d'une issue mortelle : base modulée par les traits et une compétence (voir NF.api.poidsMortel) */
+  function mortel(base, comp) { return function (s) { return NF.api.poidsMortel(s, base, comp); }; }
+  function niveau(s, comp) { return NF.core.niveauCompetence(s, comp); }
+  /** Missions possibles pendant une opération extérieure (tirées au sort au départ) */
+  var MISSIONS = ['arm_mission_convoi', 'arm_mission_patrouille', 'arm_mission_blesse', 'arm_mission_helico', 'arm_mission_engin', 'arm_mission_fievre'];
+  /** Place des événements en tête de la file du mois, dans l'ordre donné */
+  function enchainer(s, ids) {
+    for (var i = ids.length - 1; i >= 0; i--) s.evenementsEnAttente.unshift({ id: ids[i], donnees: null });
+  }
+  /** Départ en opération : pose le drapeau en_opex, tire une ou deux missions, puis le retour.
+   *  Tout se joue dans le même mois (les quatre mois sont résumés), comme avant. */
+  function partirEnOpex(s, soutien) {
+    var ids = soutien ? ['arm_mission_base'] : NF.rng.shuffle(MISSIONS).slice(0, NF.rng.chance(0.4) ? 2 : 1);
+    enchainer(s, ids.concat(['arm_opex_retour']));
+    return { energie: -5, moral: -2, drapeaux: { en_opex: true, opex_soutien: !!soutien, opex_blesse: false } };
+  }
 
   NF.ajouterEvenements([
 
-    /* ---------------- 1. Opération extérieure → retour difficile ---------------- */
+    /* ---------------- 1. Opération extérieure → missions → retour (→ nuits d'après) ---------------- */
     { id: 'arm_opex', famille: 'travail', icone: '🪖', titre: NF.t('Départ en opération extérieure'),
-      texte: function (s) { return NF.t('Votre unité est désignée pour une opération extérieure : quatre mois loin de tout, sous un autre ciel. Le commandement cherche des volontaires. La solde est majorée, environ ') + U.euros(arrondi10(salaire(s) * 1.5)) + NF.t(' de prime au retour.'); },
+      texte: function (s) { return NF.t('Votre unité est désignée pour une opération extérieure : quatre mois loin de tout, sous un autre ciel. Le commandement cherche des volontaires. La solde est majorée, environ ') + U.euros(arrondi10(salaire(s) * 1.5)) + NF.t(' de prime au retour.') + ' ' + NF.t('Là-bas, les risques sont réels : des camarades ne sont pas rentrés.'); },
       poids: 2, delai: 14,
-      conditions: { emploi: MILITAIRES, sansDrapeau: 'retour_opex' },
+      conditions: { emploi: MILITAIRES, sansDrapeau: ['retour_opex', 'en_opex'] },
       choix: [
         { texte: NF.t('Me porter volontaire'),
-          aleatoire: [
-            { poids: 12, effets: function (s) { var p = arrondi10(salaire(s) * 1.5); return { argent: p, energie: -15, moral: -3, reputation: 3, xp: { technique: 10, soins: 5 }, drapeaux: { retour_opex: true }, journal: journalPrime(NF.t('Prime d\'opération'), p) }; },
-              resultat: NF.t('Quatre mois de chaleur, de poussière et de veilles. Vous rentrez entier, avec la prime et des images qui ne partiront pas tout de suite.') },
-            { poids: 4, effets: function (s) { var p = arrondi10(salaire(s) * 1.5); return { argent: p, sante: -10, energie: -15, moral: -6, reputation: 3, drapeaux: { retour_opex: true }, journal: journalPrime(NF.t('Prime d\'opération'), p) }; },
-              resultat: NF.t('Un véhicule retourné sur une piste. Côtes fêlées, une semaine à l\'antenne chirurgicale, puis le retour avec les autres.') },
-            { poids: 3, effets: function (s) { var p = arrondi10(salaire(s) * 2); return { argent: p, sante: -20, energie: -20, moral: -10, reputation: 4, maladie: { nom: NF.t('Blessure de guerre'), duree: 2, sante: 6 }, drapeaux: { retour_opex: true }, journal: journalPrime(NF.t('Prime d\'opération'), p) }; },
-              resultat: NF.t('Un engin explosif sur l\'itinéraire. Rapatriement sanitaire, opération, rééducation. Vous garderez des éclats dans la jambe.') },
-            { poids: 1, effets: { mort: NF.t('en opération extérieure') },
-              resultat: NF.t('L\'embuscade a lieu à l\'aube. Votre nom sera gravé sur un monument, dans une ville que vous ne connaissiez pas.') }
-          ] },
+          effets: function (s) { return partirEnOpex(s, false); },
+          resultat: NF.t('Embarquement à l\'aube, le paquetage dans la soute. Quatre mois commencent, et ce qui s\'y passera ne dépendra pas que de vous.') },
         { texte: NF.t('Me porter volontaire pour un poste de soutien (logistique, transmissions)'), conditions: { competences: { technique: 2 } },
-          aleatoire: [
-            { poids: 8, effets: function (s) { var p = arrondi10(salaire(s)); return { argent: p, energie: -10, moral: 1, reputation: 2, xp: { technique: 12, gestion: 6 }, journal: journalPrime(NF.t('Prime d\'opération'), p) }; },
-              resultat: NF.t('Quatre mois sur la base arrière : groupes électrogènes, convois, inventaires. Moins de risques, moins de prime.') },
-            { poids: 2, effets: function (s) { var p = arrondi10(salaire(s)); return { argent: p, sante: -8, energie: -12, moral: -4, reputation: 2, drapeaux: { retour_opex: true }, journal: journalPrime(NF.t('Prime d\'opération'), p) }; },
-              resultat: NF.t('La base arrière est prise pour cible une nuit. Plus de peur que de mal, mais la peur reste.') }
-          ] },
+          effets: function (s) { return partirEnOpex(s, true); },
+          resultat: NF.t('Base arrière : groupes électrogènes, convois, inventaires. Moins de risques, moins de prime. Mais une base arrière reste une cible.') },
         { texte: NF.t('Ne pas me porter volontaire'), effets: { moral: 1, reputation: -2 }, resultat: NF.t('D\'autres partent à votre place. Personne ne vous le reproche à voix haute.') }
       ] },
+
+    /* ---------------- 1b. Missions en opération (tirées par arm_opex, jamais au hasard) ---------------- */
+    { id: 'arm_mission_convoi', famille: 'travail', force: true, icone: '🚚', titre: NF.t('Escorte de convoi'),
+      texte: NF.t('Cent vingt kilomètres de piste pour ravitailler un poste avancé. La veille, un engin a sauté sur le même itinéraire. Le chef de détachement compose le dispositif.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Ouvrir la route, en tête de convoi'),
+          aleatoire: [
+            { poids: 6.5, effets: { energie: -10, moral: 2, reputation: 3, xp: { conduite: 8, technique: 4 } }, resultat: NF.t('Six heures à scruter la piste, chaque remblai, chaque carcasse. Le convoi arrive entier. Le chef vous serre la main.') },
+            { poids: 2, effets: { sante: -12, energie: -14, moral: -6, reputation: 2, drapeaux: { opex_blesse: true } }, resultat: NF.t('L\'engin saute sous le véhicule de tête. Le blindage tient, pas vos tympans ni vos cervicales. Une semaine à l\'antenne chirurgicale.') },
+            { poids: 1, effets: { sante: -22, energie: -20, moral: -10, reputation: 3, maladie: { nom: NF.t('Blessure de guerre'), duree: 3, sante: 6 }, drapeaux: { opex_blesse: true } }, resultat: NF.t('L\'engin saute sous le véhicule de tête. Rapatriement sanitaire, deux opérations. Vous garderez des éclats dans la jambe.') },
+            { poids: mortel(0.9), effets: { mort: NF.t('sur un engin explosif, en opération') }, resultat: NF.t('L\'engin saute sous le véhicule de tête. Votre nom sera gravé sur un monument, dans une ville que vous ne connaissiez pas.') }
+          ] },
+        { texte: NF.t('Rester au milieu du dispositif'),
+          aleatoire: [
+            { poids: 8, effets: { energie: -8, moral: 1, reputation: 1, xp: { conduite: 4 } }, resultat: NF.t('Le convoi avance au pas, s\'arrête, repart. Le poste est ravitaillé à la nuit. Rien à signaler, pour vous.') },
+            { poids: 1.5, effets: { sante: -10, energie: -12, moral: -5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Le véhicule de tête saute. Le vôtre percute l\'arrière du blindé en freinant. Côtes fêlées, et les images du premier véhicule.') },
+            { poids: mortel(0.35), effets: { mort: NF.t('sur un engin explosif, en opération') }, resultat: NF.t('Le deuxième engin était pour le milieu du convoi.') }
+          ] },
+        { texte: NF.t('Faire reconnaître l\'itinéraire avant de partir'), conditions: { competences: { technique: 2 } },
+          aleatoire: [
+            { poids: 9, effets: { energie: -12, moral: 2, reputation: 2, xp: { technique: 8, gestion: 4 } }, resultat: NF.t('Deux heures de retard, un engin trouvé et neutralisé par les démineurs à vingt kilomètres. Le convoi passe. Personne ne dira que vous avez perdu du temps.') },
+            { poids: 1, effets: { sante: -8, energie: -14, moral: -3, drapeaux: { opex_blesse: true } }, resultat: NF.t('La reconnaissance en trouve un ; il y en avait deux. Le second fait des dégâts, moins qu\'il aurait pu.') },
+            { poids: mortel(0.2), effets: { mort: NF.t('sur un engin explosif, en opération') }, resultat: NF.t('La reconnaissance en trouve un ; il y en avait deux.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_patrouille', famille: 'travail', force: true, icone: '🌒', titre: NF.t('Patrouille de nuit'),
+      texte: NF.t('Patrouille à pied dans un village que la carte dit vide. À la sortie, les premières rafales partent des murets. La section se couche. La radio crache des ordres.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Me mettre à couvert et demander l\'appui'),
+          aleatoire: [
+            { poids: 8, effets: { energie: -10, moral: -2, reputation: 1, xp: { technique: 4 } }, resultat: NF.t('Vingt minutes derrière un muret, à compter les coups. L\'appui arrive, les tirs cessent. Tout le monde rentre.') },
+            { poids: 1.5, effets: { sante: -12, energie: -12, moral: -6, drapeaux: { opex_blesse: true } }, resultat: NF.t('Un éclat de muret dans l\'épaule avant que l\'appui n\'arrive. Rien de grave, dit l\'infirmier. Ça ne fait pas cet effet-là.') },
+            { poids: mortel(0.3), effets: { mort: NF.t('sous le feu, en patrouille') }, resultat: NF.t('Le muret ne couvre pas tout.') }
+          ] },
+        { texte: NF.t('Riposter et manœuvrer avec le groupe'),
+          aleatoire: [
+            { poids: 6, effets: { energie: -14, moral: 3, reputation: 4, xp: { sport: 6, technique: 4 } }, resultat: NF.t('Vous débordez par la droite, les tireurs décrochent. La section rentre entière. Le chef de section vous cite au rapport.') },
+            { poids: 2.5, effets: { sante: -16, energie: -16, moral: -6, reputation: 3, drapeaux: { opex_blesse: true } }, resultat: NF.t('Une balle dans la cuisse pendant le bond. Le garrot, l\'évacuation, l\'hôpital de campagne. Vous rentrez en boitant, avec une citation.') },
+            { poids: 1, effets: { sante: -24, energie: -20, moral: -10, reputation: 4, maladie: { nom: NF.t('Blessure de guerre'), duree: 3, sante: 6 }, drapeaux: { opex_blesse: true } }, resultat: NF.t('Touché au ventre. Rapatriement, trois opérations. Vous rentrez bien avant les autres, et pas entier.') },
+            { poids: mortel(0.9, 'sport'), effets: { mort: NF.t('sous le feu, en patrouille') }, resultat: NF.t('Le bond suivant est trop long. La section vous ramène, mais pas vivant.') }
+          ] },
+        { texte: NF.t('Couvrir le repli de la section'),
+          aleatoire: [
+            { poids: 5.5, effets: { energie: -16, moral: 4, reputation: 6, xp: { technique: 6 } }, resultat: NF.t('Vous tenez le muret pendant que les autres décrochent. Le dernier chargeur vidé, vous courez. Citation à l\'ordre de la brigade.') },
+            { poids: 3, effets: { sante: -18, energie: -18, moral: -6, reputation: 5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous tenez, trop longtemps. Touché à l\'épaule en courant rejoindre les autres. Ils vous portent sur le dernier kilomètre.') },
+            { poids: mortel(1.4), effets: { mort: NF.t('en couvrant le repli de sa section') }, resultat: NF.t('Vous tenez. Les autres rentrent. Le muret, lui, n\'a tenu que le temps qu\'il fallait.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_blesse', famille: 'travail', force: true, icone: '🩸', titre: NF.t('Camarade à terre'),
+      texte: NF.t('Un tir isolé, et un camarade s\'effondre à trente mètres, en terrain découvert. Il bouge encore. Le tireur, lui, attend que quelqu\'un aille le chercher.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Aller le chercher, maintenant'),
+          aleatoire: [
+            { poids: function (s) { return 5.5 + niveau(s, 'soins'); }, effets: { energie: -16, moral: 5, reputation: 6, xp: { soins: 12, sport: 6 } }, resultat: NF.t('Trente mètres aller, trente retour en le traînant par le gilet. Le garrot, l\'évacuation. Il vivra, et il le sait.') },
+            { poids: 2.5, effets: { sante: -18, energie: -18, moral: -4, reputation: 5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous le ramenez, touché vous-même au passage. Deux civières côte à côte dans l\'hélicoptère.') },
+            { poids: mortel(1.3), effets: { mort: NF.t('en allant chercher un camarade blessé') }, resultat: NF.t('Le tireur attendait ça. Vous tombez à dix mètres de lui.') }
+          ] },
+        { texte: NF.t('Attendre le binôme d\'extraction, sous couverture'),
+          aleatoire: [
+            { poids: 7, effets: { energie: -10, moral: -4, reputation: 1, xp: { technique: 4 } }, resultat: NF.t('Le groupe fixe le tireur, le binôme va le chercher sous fumigène. Il perd une jambe. Il vivra.') },
+            { poids: 3, effets: { energie: -10, moral: -12 }, resultat: NF.t('Le binôme arrive trop tard. Vous l\'avez regardé bouger, puis arrêter de bouger.') },
+            { poids: mortel(0.25), effets: { mort: NF.t('sous le feu, en opération') }, resultat: NF.t('Le tireur n\'attendait pas que lui.') }
+          ] },
+        { texte: NF.t('Guider l\'extraction par radio depuis le couvert'), conditions: { competences: { gestion: 1 } },
+          aleatoire: [
+            { poids: 9, effets: { energie: -10, moral: 2, reputation: 3, xp: { gestion: 8, technique: 4 } }, resultat: NF.t('Fumigène, appui, binôme : vous coordonnez tout depuis le muret. Il est récupéré en quatre minutes, vivant.') },
+            { poids: 1, effets: { sante: -10, energie: -12, moral: -6, drapeaux: { opex_blesse: true } }, resultat: NF.t('Le tireur change de position. Un éclat vous trouve derrière le muret pendant que vous parlez à la radio.') },
+            { poids: mortel(0.15), effets: { mort: NF.t('sous le feu, en opération') }, resultat: NF.t('Le tireur change de position.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_helico', famille: 'travail', force: true, icone: '🚁', titre: NF.t('Relève de nuit'),
+      texte: NF.t('Relève d\'un poste isolé, à cent cinquante kilomètres. Deux moyens : l\'hélicoptère, qui décolle à deux heures du matin, ou le convoi routier, douze heures de piste. On vous laisse choisir, pour une fois.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Monter dans l\'hélicoptère'),
+          aleatoire: [
+            { poids: 9, effets: { energie: -6, moral: 2, xp: { technique: 3 } }, resultat: NF.t('Quarante minutes de vol, les portes ouvertes, le désert sous la lune. Posé en douceur. Vous ne l\'oublierez pas.') },
+            { poids: 1.2, effets: { sante: -14, energie: -12, moral: -6, drapeaux: { opex_blesse: true } }, resultat: NF.t('Atterrissage dur dans la poussière, l\'appareil qui bascule. Trois blessés, dont vous. L\'hélicoptère ne revolera pas.') },
+            { poids: mortel(0.45), effets: { mort: NF.t('dans un accident d\'hélicoptère, en opération') }, resultat: NF.t('L\'appareil accroche une crête dans le noir. Il n\'y a pas de survivant.') }
+          ] },
+        { texte: NF.t('Partir avec le convoi routier'),
+          aleatoire: [
+            { poids: 8.5, effets: { energie: -14, moral: -2, xp: { conduite: 6 } }, resultat: NF.t('Douze heures de piste, de poussière et de crampes. Le poste est relevé à la nuit tombée. Vous avez mal partout, mais tout est entier.') },
+            { poids: 1.5, effets: { sante: -12, energie: -16, moral: -5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Le véhicule verse dans un oued. Le blindé est sur le toit, et vous avez l\'épaule démise.') },
+            { poids: mortel(0.35), effets: { mort: NF.t('dans un accident de véhicule, en opération') }, resultat: NF.t('Le véhicule verse dans un oued. Le blindé est sur le toit, et vous dessous.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_engin', famille: 'travail', force: true, icone: '💣', titre: NF.t('Engin suspect'),
+      texte: NF.t('Un sac abandonné au bord de la piste, des fils qui dépassent, et une colonne de véhicules arrêtée derrière. Les démineurs sont à deux heures. Le chef de détachement vous regarde.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Baliser la zone et attendre les démineurs'),
+          effets: { energie: -10, moral: -2, reputation: 1, xp: { technique: 4 } },
+          resultat: NF.t('Deux heures à plat ventre dans la poussière, à surveiller les abords. Les démineurs font sauter l\'engin sur place. La colonne repart.') },
+        { texte: NF.t('Neutraliser l\'engin moi-même'), conditions: { competences: { technique: 1 } },
+          aleatoire: [
+            { poids: function (s) { return 5 + 1.5 * niveau(s, 'technique'); }, effets: { energie: -14, moral: 4, reputation: 6, xp: { technique: 12 } }, resultat: NF.t('Le fil coupé, le détonateur dans la main, la colonne qui redémarre. Les démineurs, en arrivant, vous passent un savon. Le chef, lui, vous propose pour une citation.') },
+            { poids: 2, effets: { sante: -20, energie: -18, moral: -8, reputation: 3, maladie: { nom: NF.t('Blessure de guerre'), duree: 3, sante: 6 }, drapeaux: { opex_blesse: true } }, resultat: NF.t('Une charge secondaire, plus petite. Vous gardez vos mains, pas tous vos doigts.') },
+            { poids: mortel(1.3, 'technique'), effets: { mort: NF.t('en neutralisant un engin explosif') }, resultat: NF.t('Une charge secondaire. On ne retrouve pas grand-chose.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_fievre', famille: 'travail', force: true, icone: '🦟', titre: NF.t('La fièvre'),
+      texte: NF.t('Troisième semaine sur la base avancée. Frissons le soir, quarante de fièvre la nuit, des courbatures qui vous plient en deux. Le médecin d\'unité est à deux cents kilomètres, et le mandat n\'est pas fini.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Demander l\'évacuation vers l\'antenne médicale'),
+          effets: { sante: -8, energie: -14, moral: -4, reputation: -1, xp: { soins: 6 } },
+          resultat: NF.t('Paludisme. Perfusions, dix jours sous moustiquaire à l\'antenne médicale, puis retour sur la base. Le chef note que vous avez manqué, sans en faire une histoire.') },
+        { texte: NF.t('Tenir jusqu\'à la fin du mandat'),
+          aleatoire: [
+            { poids: 5, effets: { sante: -14, energie: -18, moral: -6, reputation: 2, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous tenez, à coups de cachets et de nuits sans sommeil. Les autres couvrent vos gardes. Vous rentrez avec dix kilos de moins.') },
+            { poids: 3, effets: { sante: -22, energie: -20, moral: -10, maladie: { nom: NF.t('Paludisme'), duree: 3, sante: 6 }, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous vous effondrez pendant une garde. Évacuation d\'urgence, et un paludisme qui reviendra pendant des mois.') },
+            { poids: mortel(0.6, 'soins'), effets: { mort: NF.t('d\'une fièvre contractée en opération') }, resultat: NF.t('Vous vous effondrez pendant une garde. L\'hélicoptère sanitaire arrive au matin.') }
+          ] }
+      ] },
+
+    { id: 'arm_mission_base', famille: 'travail', force: true, icone: '🏕️', titre: NF.t('Alerte sur la base'),
+      texte: NF.t('Deux heures du matin, la sirène. Des roquettes tombent sur la base arrière, une sur le parc à véhicules, une près des conteneurs d\'habitation. Des cris du côté des transmissions.'),
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      choix: [
+        { texte: NF.t('Rejoindre l\'abri bétonné'),
+          aleatoire: [
+            { poids: 9, effets: { energie: -8, moral: -4, xp: { technique: 2 } }, resultat: NF.t('Une heure dans l\'abri, casque sur la tête, à compter les impacts. Fin d\'alerte. Deux blessés légers, aucun chez vous.') },
+            { poids: 1, effets: { sante: -10, energie: -12, moral: -6, drapeaux: { opex_blesse: true } }, resultat: NF.t('Une roquette tombe à vingt mètres pendant que vous courez vers l\'abri. Éclats dans le dos, rien de vital.') },
+            { poids: mortel(0.15), effets: { mort: NF.t('lors d\'une attaque de la base, en opération') }, resultat: NF.t('Une roquette tombe à cinq mètres pendant que vous courez vers l\'abri.') }
+          ] },
+        { texte: NF.t('Aller aider du côté des cris'),
+          aleatoire: [
+            { poids: function (s) { return 6 + niveau(s, 'soins'); }, effets: { energie: -14, moral: 3, reputation: 5, xp: { soins: 12 } }, resultat: NF.t('Deux blessés sous un conteneur éventré. Garrot, pansement, brancard, jusqu\'au poste de secours. Ils s\'en sortent, et le médecin vous garde pour la nuit.') },
+            { poids: 2, effets: { sante: -14, energie: -16, moral: -6, reputation: 3, drapeaux: { opex_blesse: true } }, resultat: NF.t('La deuxième salve tombe pendant que vous portez le brancard. Éclats dans les jambes. Vous finissez à côté de ceux que vous portiez.') },
+            { poids: mortel(0.5, 'soins'), effets: { mort: NF.t('lors d\'une attaque de la base, en opération') }, resultat: NF.t('La deuxième salve tombe pendant que vous portez le brancard.') }
+          ] }
+      ] },
+
+    { id: 'arm_opex_retour', famille: 'travail', force: true, icone: '✈️', titre: NF.t('Retour d\'opération'),
+      texte: function (s) { return NF.t('Fin de mandat. L\'avion se pose à l\'aube, la prime est virée dans le mois, et la caserne a l\'air plus petite qu\'avant. ') + (s.joueur.drapeaux.opex_blesse ? NF.t('Vous rentrez avec des cicatrices, et des images qui ne partiront pas tout de suite.') : NF.t('Vous rentrez entier, avec des images qui ne partiront pas tout de suite.')); },
+      delai: 1, conditions: { drapeau: 'en_opex' },
+      effets: function (s) {
+        var soutien = !!s.joueur.drapeaux.opex_soutien, blesse = !!s.joueur.drapeaux.opex_blesse;
+        var p = arrondi10(salaire(s) * (soutien ? 1 : 1.5));
+        s.stats.opex = (s.stats.opex || 0) + 1;
+        var e = { argent: p, energie: -10, moral: blesse ? -6 : -2, reputation: soutien ? 2 : 4,
+                  xp: soutien ? { technique: 12, gestion: 6 } : { technique: 10, soins: 5 },
+                  drapeaux: { en_opex: false, opex_soutien: false, opex_blesse: false },
+                  journal: journalPrime(NF.t('Prime d\'opération'), p) };
+        if (NF.rng.chance(blesse ? 0.8 : soutien ? 0.2 : 0.5)) e.drapeaux.retour_opex = true;
+        return e;
+      },
+      resultat: NF.t('La prime sur le compte, le paquetage au pied du lit, et quatre mois à raconter à ceux qui n\'étaient pas là.') },
 
     { id: 'arm_retour_opex', famille: 'travail', icone: '🌙', titre: NF.t('Les nuits d\'après'),
       texte: function (s) { return NF.t('Depuis le retour d\'opération, vous dormez mal. Les mêmes images reviennent la nuit, une porte qui claque vous fait sursauter') + (partenaire(s) ? ', ' + prenomP(s) + NF.t(' ne sait plus comment vous parler') : '') + '. ' + (estMilitaire(s) ? NF.t('À la caserne, personne n\'en parle.') : NF.t('Vous avez quitté l\'uniforme, pas les images.')); },
@@ -292,7 +457,9 @@
           aleatoire: [
             { poids: 6, effets: { reputation: 6, moral: 8, energie: -12, xp: { soins: 6 } }, resultat: NF.t('Vous ressortez avec la personne, vivante. Le lendemain, votre photo est dans le journal local, sous un titre un peu trop grand.') },
             { poids: 3, effets: { reputation: 5, moral: 2, sante: -14, energie: -14, maladie: { nom: NF.t('Brûlures'), duree: 1, sante: 5 } }, resultat: NF.t('La personne est sauvée. Vous, c\'est l\'hôpital : brûlures aux bras, fumées. Le journal vous appelle « le héros du quartier ».') },
-            { poids: 1, effets: { reputation: 4, moral: -6, sante: -24, energie: -16, maladie: { nom: NF.t('Intoxication aux fumées'), duree: 2, sante: 6 } }, resultat: NF.t('Vous perdez connaissance dans la fumée. Ce sont vos collègues qui vous sortent, vous et la victime. Deux semaines de soins.') }
+            { poids: 1, effets: { reputation: 4, moral: -6, sante: -24, energie: -16, maladie: { nom: NF.t('Intoxication aux fumées'), duree: 2, sante: 6 } }, resultat: NF.t('Vous perdez connaissance dans la fumée. Ce sont vos collègues qui vous sortent, vous et la victime. Deux semaines de soins.') },
+            { poids: mortel(0.5), effets: function (s) { return { mort: estGendarme(s) ? NF.t('noyé en intervention') : NF.t('dans un incendie, en intervention') }; },
+              resultat: function (s) { return estGendarme(s) ? NF.t('Le courant emporte la voiture, et vous avec.') : NF.t('Le plancher du quatrième cède. Vos collègues vous sortent trop tard.'); } }
           ] },
         { texte: NF.t('Respecter la procédure et attendre les renforts'), effets: { reputation: 1, moral: -2, energie: -6 }, resultat: NF.t('Vous sécurisez le périmètre. Les renforts arrivent et font le travail. La personne s\'en sort, de justesse. Vous y repenserez.') },
         { texte: NF.t('Coordonner depuis l\'extérieur'), conditions: { competences: { gestion: 1 } }, effets: { reputation: 3, moral: 4, energie: -6, xp: { gestion: 8 } }, resultat: NF.t('Vous placez les équipes, guidez l\'échelle, tenez la radio. Pas de photo, mais le chef de centre a noté.') }
@@ -338,6 +505,70 @@
           ] },
         { texte: NF.t('Profiter du calme : lessive, rangement, sommeil'), effets: { hygiene: 12, energie: 10, moral: 2 }, resultat: NF.t('Le placard impeccable, les rangers cirées, dix heures de sommeil. La revue de vendredi sera une formalité.') },
         { texte: NF.t('Donner un coup de main en cuisine'), effets: { xp: { cuisine: 10 }, nourriture: 12, reputation: 1, energie: -5 }, resultat: NF.t('Quatre cents couverts, et un plat à emporter en remerciement. Le cuisinier retiendra votre nom.') }
+      ] },
+
+    /* ---------------- 15. Saut d'entraînement ---------------- */
+    { id: 'arm_saut', famille: 'travail', icone: '🪂', titre: NF.t('Saut d\'entraînement'),
+      texte: NF.t('Séance de saut à l\'aube, quatre cents mètres, ouverture automatique. Le largueur vérifie les sangles à la chaîne. Dans l\'avion, personne ne parle.'),
+      poids: 1.5, delai: 18,
+      conditions: { emploi: MILITAIRES },
+      choix: [
+        { texte: NF.t('Vérifier mon parachute une deuxième fois'),
+          aleatoire: [
+            { poids: 9.5, effets: { energie: -8, moral: 5, reputation: 1, xp: { technique: 6, sport: 4 } }, resultat: NF.t('Une suspente mal rangée, corrigée au sol. Le saut est parfait, le silence sous la voile aussi.') },
+            { poids: 0.8, effets: { sante: -12, energie: -10, moral: -4 }, resultat: NF.t('Mauvaise réception dans le vent. Cheville cassée, six semaines de plâtre.') },
+            { poids: mortel(0.12, 'technique'), effets: { mort: NF.t('lors d\'un saut en parachute') }, resultat: NF.t('Le parachute de secours s\'ouvre trop bas.') }
+          ] },
+        { texte: NF.t('Sauter, comme les autres'),
+          aleatoire: [
+            { poids: 8, effets: { energie: -8, moral: 5, reputation: 1, xp: { sport: 6 } }, resultat: NF.t('Quatre secondes de chute, le choc de l\'ouverture, le silence. Vous vous posez dans l\'herbe mouillée.') },
+            { poids: 1.5, effets: { sante: -14, energie: -12, moral: -5, maladie: { nom: NF.t('Fracture'), duree: 2, sante: 4 } }, resultat: NF.t('Torsion de la voile, réception brutale. Jambe cassée à deux endroits.') },
+            { poids: mortel(0.35), effets: { mort: NF.t('lors d\'un saut en parachute') }, resultat: NF.t('La voile ne s\'ouvre pas. Le secours non plus.') }
+          ] }
+      ] },
+
+    /* ---------------- 16. Franchissement ---------------- */
+    { id: 'arm_franchissement', famille: 'travail', icone: '🌊', titre: NF.t('Franchissement'),
+      texte: NF.t('Exercice de franchissement de rivière, en tenue, avec le sac et l\'arme. L\'eau est à huit degrés et le courant plus fort que prévu. Le chef de section demande qui passe en premier.'),
+      poids: 1.5, delai: 18,
+      conditions: { emploi: MILITAIRES },
+      choix: [
+        { texte: NF.t('Passer en premier'),
+          aleatoire: [
+            { poids: function (s) { return 7 + 1.5 * niveau(s, 'sport'); }, effets: { energie: -14, moral: 4, reputation: 3, xp: { sport: 10 } }, resultat: NF.t('Trente mètres de courant glacé, le sac qui tire vers le fond. Vous touchez l\'autre rive en claquant des dents. Les autres suivent sur votre corde.') },
+            { poids: 2, effets: { sante: -12, energie: -16, moral: -5 }, resultat: NF.t('Le courant vous emporte vingt mètres en aval. Un camarade vous rattrape par le sac. Hypothermie légère, une nuit à l\'infirmerie.') },
+            { poids: mortel(0.5, 'sport'), effets: { mort: NF.t('noyé pendant un exercice') }, resultat: NF.t('Le courant vous emporte. Le sac fait le reste.') }
+          ] },
+        { texte: NF.t('Passer en dernier, avec la corde de sécurité'),
+          aleatoire: [
+            { poids: 9, effets: { energie: -10, moral: 1, xp: { sport: 5 } }, resultat: NF.t('Accroché à la corde, le courant tire mais ne gagne pas. L\'autre rive, les lèvres bleues, et c\'est fini.') },
+            { poids: 1, effets: { sante: -8, energie: -14, moral: -3 }, resultat: NF.t('Une crampe au milieu. La corde tient, les camarades tirent. Vous arrivez sur la berge en recrachant de l\'eau.') },
+            { poids: mortel(0.12), effets: { mort: NF.t('noyé pendant un exercice') }, resultat: NF.t('Le mousqueton lâche au milieu du courant.') }
+          ] },
+        { texte: NF.t('Dire que je nage mal'), effets: { moral: -3, reputation: -2, energie: 2 }, resultat: NF.t('Le chef vous met à la sécurité sur la berge, avec la perche. Personne ne dit rien. Tout le monde a entendu.') }
+      ] },
+
+    /* ---------------- 17. Forcené (gendarme) ---------------- */
+    { id: 'arm_forcene', famille: 'travail', icone: '🚔', titre: NF.t('Forcené'),
+      texte: NF.t('Un homme s\'est retranché chez lui avec un fusil de chasse, après une dispute. Il a déjà tiré une fois, en l\'air. L\'unité spécialisée est à une heure de route. Vous êtes la première patrouille sur place, avec un collègue et deux gilets.'),
+      poids: 2, delai: 16,
+      conditions: { emploi: 'gendarme' },
+      choix: [
+        { texte: NF.t('Boucler le périmètre et attendre l\'unité spécialisée'),
+          effets: { energie: -10, moral: -2, reputation: 1, xp: { gestion: 4 } },
+          resultat: NF.t('Une heure à tenir les voisins à distance, le fusil derrière la fenêtre. L\'unité spécialisée arrive, négocie, et il sort les mains en l\'air. Rien à signaler, sauf la peur.') },
+        { texte: NF.t('Lui parler, gagner du temps'), conditions: { competences: { commerce: 2 } },
+          aleatoire: [
+            { poids: 8, effets: { energie: -12, moral: 4, reputation: 6, xp: { commerce: 8 } }, resultat: NF.t('Quarante minutes à lui parler depuis le portail, de sa femme, de son chien, de rien. Il pose le fusil avant l\'arrivée de l\'unité. Lettre de félicitations.') },
+            { poids: 1.5, effets: { sante: -14, energie: -12, moral: -8, reputation: 3 }, resultat: NF.t('Il tire dans votre direction au milieu d\'une phrase. Des plombs dans le bras. Vous finissez la négociation depuis l\'ambulance, et il sort quand même.') },
+            { poids: mortel(0.3), effets: { mort: NF.t('abattu en intervention') }, resultat: NF.t('Il tire dans votre direction au milieu d\'une phrase.') }
+          ] },
+        { texte: NF.t('Entrer en premier'),
+          aleatoire: [
+            { poids: 5.5, effets: { energie: -14, moral: 3, reputation: 7, xp: { sport: 6 } }, resultat: NF.t('La porte cède, il n\'a pas le temps d\'épauler. Menotté sur le sol de sa cuisine. Félicitations du commandant, et un rappel sur la procédure.') },
+            { poids: 3, effets: { sante: -20, energie: -16, moral: -8, reputation: 5, maladie: { nom: NF.t('Blessure par balle'), duree: 3, sante: 5 } }, resultat: NF.t('Il tire au moment où la porte cède. Le gilet arrête l\'essentiel, pas tout. Trois semaines d\'hôpital.') },
+            { poids: mortel(1.2), effets: { mort: NF.t('abattu en intervention') }, resultat: NF.t('Il tire au moment où la porte cède. Le gilet n\'arrête pas un fusil de chasse à deux mètres.') }
+          ] }
       ] }
   ]);
 })();

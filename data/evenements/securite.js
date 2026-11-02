@@ -94,6 +94,8 @@
               resultat: NF.t('Ils sont trois. Vous finissez au sol, et ils se servent quand même.') },
             { poids: 1, effets: { sante: -20, energie: -15, moral: -12, maladie: { nom: NF.t('Côtes fêlées'), duree: 2, sante: 4 }, drapeaux: { agression_subie: true } },
               resultat: NF.t('Coups de pied dans les côtes. Un passant appelle les secours. Des semaines à récupérer.') },
+            { poids: function (s) { return NF.api.poidsMortel(s, 0.4, 'sport'); }, effets: { mort: NF.t('à coups de couteau, une nuit, dans la rue') },
+              resultat: NF.t('L\'un des trois a un couteau. Vous ne le voyez pas.') },
           ] },
         { texte: NF.t('Appeler les secours'), conditions: { telephone: true },
           aleatoire: [
@@ -239,7 +241,7 @@
                 return e;
               },
               resultat: NF.t('Une bâche enflammée vous tombe dessus. Hôpital, brûlures aux bras, et plus rien à récupérer.') },
-            { poids: 1, effets: { mort: NF.t('asphyxie dans un incendie') }, resultat: NF.t('La fumée est plus rapide que vous.') },
+            { poids: function (s) { return NF.api.poidsMortel(s, 1); }, effets: { mort: NF.t('asphyxié dans un incendie') }, resultat: NF.t('La fumée est plus rapide que vous.') },
           ] },
         { texte: NF.t('Aider les autres à sortir'), conditions: { competences: { soins: 1 } },
           effets: function (s) {

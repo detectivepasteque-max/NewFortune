@@ -1,7 +1,8 @@
 # 03 – Écrire un événement
 
 Les événements sont dans `data/evenements/`, un fichier par famille (plus
-`loisirs.js`, événements ouverts par les compétences annexes, famille `divers`). Chaque
+`loisirs.js`, événements ouverts par les compétences annexes, et `risques.js`,
+situations rares où la mort est une issue possible). Chaque
 fichier appelle `NF.ajouterEvenements([ … ])`. Pour un nouveau fichier, ajoutez
 sa balise `<script>` dans `index.html` (section 4, après `systeme.js`).
 
@@ -134,6 +135,28 @@ effets: function (s) {
 
 Le moteur calcule automatiquement les variations de jauges affichées au joueur
 (« +8 moral, −20 € ») en comparant l'état avant et après.
+
+## Issues mortelles
+
+`effets: { mort: NF.t('cause') }` tue le personnage ; la cause s'affiche après
+« est mort » (`'dans un accident de la route'`, `'noyé'`, `'sous le feu, en
+patrouille'`). Règles suivies dans `risques.js` (vie civile) et `armee.js`
+(missions en opération, entraînement, interventions) :
+
+- la mort n'est jamais la seule issue d'un choix : elle figure dans un
+  `aleatoire` à côté d'issues indemnes et blessées, et l'événement garde au
+  moins un choix prudent sans issue mortelle ;
+- son poids passe par `NF.api.poidsMortel(s, base, competence)`, qui tient
+  compte des traits (chanceux ×0,6, robuste ×0,8, fragile ×1,25) et d'une
+  compétence protectrice facultative (−12 % par niveau) :
+  `poids: function (s) { return NF.api.poidsMortel(s, 0.6, 'conduite'); }` ;
+- ordre de grandeur, pour des poids « sains » totalisant une dizaine : 0,15 à
+  0,5 (1 à 5 %) pour un choix raisonnable, 1 à 1,5 (10 à 15 %) pour une
+  imprudence.
+
+Les opérations extérieures (`arm_opex`) enchaînent dans le même mois une ou
+deux missions tirées au sort (`arm_mission_*`, drapeau `en_opex`) puis le
+retour (`arm_opex_retour`) ; `s.stats.opex` compte les retours.
 
 ## Chaînes d'événements
 

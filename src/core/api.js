@@ -174,6 +174,18 @@
     s.mort = { cause: cause, age: NF.core.ageAnnees(s), annee: s.temps.annee };
     s.joueur.jauges.sante = 0;
   };
+  /** Poids d'une issue mortelle dans un choix `aleatoire` (voir docs/03, « Issues mortelles ») :
+   *  la base est réduite par les traits chanceux (×0,6) et robuste (×0,8), augmentée par fragile
+   *  (×1,25), et réduite de 12 % par niveau d'une compétence protectrice facultative (plancher ×0,4).
+   *    { poids: function (s) { return NF.api.poidsMortel(s, 0.6, 'conduite'); }, effets: { mort: NF.t('…') } } */
+  api.poidsMortel = function (s, base, competence) {
+    var p = base;
+    if (NF.core.aTrait(s, 'chanceux')) p *= 0.6;
+    if (NF.core.aTrait(s, 'robuste')) p *= 0.8;
+    if (NF.core.aTrait(s, 'fragile')) p *= 1.25;
+    if (competence) p *= Math.max(0.4, 1 - 0.12 * NF.core.niveauCompetence(s, competence));
+    return p;
+  };
 
   /* ----- Effets déclaratifs -----
    * effets = { sante: -5, argent: 20, reputation: 2, xp: { lecture: 10 },

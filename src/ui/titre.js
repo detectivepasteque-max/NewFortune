@@ -74,6 +74,7 @@
       NF.t('<p>Vous avez 18 ans et vous vivez dans la rue. Chaque tour représente <strong>un mois</strong>. Vous disposez de quelques <strong>points d\'action (PA)</strong> à dépenser, puis vous terminez le mois : le bilan tombe (revenus, dépenses, usure des jauges) et un ou deux <strong>événements</strong> surviennent, souvent avec un choix.</p>') +
       NF.t('<h3>Les jauges</h3><ul>') +
       NF.t('<li><strong>❤️ Santé</strong> : à zéro, c\'est la mort. Elle baisse quand les autres jauges sont basses, l\'hiver dehors, en cas de maladie.</li>') +
+      NF.t('<li><strong>☠️ Risques</strong> : certaines situations peuvent tuer d\'un coup (opération militaire, route de nuit, grand froid, rixe, maladie non soignée). Un choix prudent existe toujours ; les traits et les compétences réduisent le risque.</li>') +
       NF.t('<li><strong>🍞 Faim</strong> (jauge pleine = rassasié), <strong>⚡ Énergie</strong>, <strong>🧼 Hygiène</strong> : s\'usent chaque mois. Basses, elles attaquent la santé et réduisent l\'efficacité (et l\'hygiène ferme des emplois).</li>') +
       NF.t('<li><strong>🙂 Moral</strong> : bas, vos actions sont moins efficaces.</li>') +
       NF.t('<li><strong>💶 Argent</strong> et <strong>⭐ Réputation</strong> : la réputation ouvre les foyers, les associations, les emplois.</li></ul>') +

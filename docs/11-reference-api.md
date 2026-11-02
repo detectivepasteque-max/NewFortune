@@ -21,6 +21,7 @@ données (événements, actions, bonus) ; `NF.core` contient les règles.
 | `journal(s, 'texte', type)` | ligne de journal (`type` : info, bon, mauvais, titre, evenement, bilan) |
 | `rendreMalade(s, nom, duree, santeParMois)` / `guerir(s)` | maladie |
 | `tuer(s, 'cause')` | mort |
+| `poidsMortel(s, base, competence)` | poids d'une issue mortelle dans un choix `aleatoire` : base × traits (chanceux 0,6 ; robuste 0,8 ; fragile 1,25) × (1 − 0,12 × niveau de la compétence protectrice, plancher 0,4) |
 | `appliquerEffets(s, effets)` | applique un objet d'effets déclaratifs (voir `03`) |
 | `instantane(s)` / `difference(s, avant)` | pour afficher les variations |
 | `LIBELLES` | noms et icônes des jauges, argent, réputation, dette |

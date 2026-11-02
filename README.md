@@ -58,6 +58,7 @@ data/                   TOUT LE CONTENU MODIFIABLE
     armee.js            carrière militaire et sécurité publique
     divers.js           vie quotidienne
     loisirs.js          loisirs et talents (événements ouverts par les compétences annexes)
+    risques.js          risques mortels de la vie civile (route, chantier, froid, alcool, rixe…)
 src/                    LE MOTEUR ET L'INTERFACE
   i18n.js               langues : NF.t('texte français') et choix de la langue
   nf.js                 espace de noms global NF + utilitaires

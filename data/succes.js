@@ -56,4 +56,6 @@ NF.data.succes = [
     condition: function (s) { var n = 0; NF.data.competences.forEach(function (c) { if (c.annexe && NF.core.niveauCompetence(s, c.id) >= 2) n++; }); return n >= 5; } },
   { id: 'artiste_de_rue', nom: NF.t('Artiste de rue'), icone: '🎪', desc: NF.t('Donner 25 spectacles de rue.'),
     condition: function (s) { return (s.stats.spectacles || 0) >= 25; } },
+  { id: 'veteran', nom: NF.t('Vétéran'), icone: '🎖️', desc: NF.t('Revenir de trois opérations extérieures.'),
+    condition: function (s) { return (s.stats.opex || 0) >= 3; } },
 ];
