@@ -37,7 +37,7 @@ lang/                   TRADUCTIONS : un dictionnaire par langue (en, es, de, it
 data/                   TOUT LE CONTENU MODIFIABLE
   config.js             constantes d'équilibrage (jauges, usure, saisons, score…)
   actions.js            actions du joueur (mendier, fouiller, se laver…)
-  competences.js        compétences (11 principales + 18 annexes : loisirs et talents)
+  competences.js        compétences (12 principales + 17 annexes : loisirs et talents)
   metiers.js            ~50 métiers en 5 niveaux (dont armée, gendarmerie, pompiers) et filières de promotion
   formations.js         formations et diplômes
   objets.js             objets, matériaux, consommables

@@ -262,41 +262,44 @@ NF.data.metiers = [
 
   /* =============== ARMÉE ET SÉCURITÉ PUBLIQUE ===============
    * Le secteur 'armee' loge ses personnels en caserne (voir logements.js) ;
-   * l'expérience militaire compte pour créer une entreprise de sécurité. */
+   * l'expérience militaire compte pour créer une entreprise de sécurité.
+   * Le sport (compétence principale) est exigé à l'entrée et pour les
+   * promotions (sauf à la Légion, qui prend tout le monde et forme), et
+   * progresse chaque mois dans ces métiers. */
   { id: 'legionnaire', nom: NF.t('Légionnaire'), icone: '🪖', niveau: 2, secteur: 'armee',
     desc: NF.t('La Légion étrangère recrute sans papiers ni passé. Cinq ans d\'engagement, une discipline de fer, un toit.'),
     salaire: [1300, 1450], penibilite: 26, risque: 0.03, pa: 1, stabilite: 0.004, chance: 0.2,
-    xp: { technique: 6, soins: 4, langues: 6, conduite: 3 }, prerequis: { hygiene: 35, ageMax: 39, jauges: { sante: { min: 60 }, energie: { min: 40 } } } },
+    xp: { technique: 6, soins: 4, langues: 6, conduite: 3, sport: 10 }, prerequis: { hygiene: 35, ageMax: 39, jauges: { sante: { min: 60 }, energie: { min: 40 } } } },
 
   { id: 'militaire_du_rang', nom: NF.t('Militaire du rang'), icone: '🎖️', niveau: 2, secteur: 'armee',
     desc: NF.t('Engagé volontaire dans l\'armée de terre. Logé, nourri, formé.'),
     salaire: [1350, 1500], penibilite: 22, risque: 0.025, pa: 1, stabilite: 0.004, chance: 0.35,
-    xp: { technique: 6, soins: 5, conduite: 4 }, prerequis: { hygiene: 40, domiciliation: true, casierVierge: true, ageMax: 30, jauges: { sante: { min: 55 }, energie: { min: 40 } } } },
+    xp: { technique: 6, soins: 5, conduite: 4, sport: 8 }, prerequis: { hygiene: 40, domiciliation: true, casierVierge: true, competences: { sport: 1 }, ageMax: 30, jauges: { sante: { min: 55 }, energie: { min: 40 } } } },
 
   { id: 'sous_officier', nom: NF.t('Sous-officier'), icone: '🎖️', niveau: 3, secteur: 'armee',
     desc: NF.t('Sergent, puis adjudant : commander une section, former les jeunes recrues.'),
     salaire: [1800, 2300], penibilite: 18, risque: 0.02, pa: 1, stabilite: 0.003,
-    xp: { technique: 6, gestion: 6, soins: 3 }, prerequis: { hygiene: 50, casierVierge: true, competences: { lecture: 2, technique: 1 }, experience: { armee: 24 } } },
+    xp: { technique: 6, gestion: 6, soins: 3, sport: 5 }, prerequis: { hygiene: 50, casierVierge: true, competences: { lecture: 2, technique: 1, sport: 2 }, experience: { armee: 24 } } },
 
   { id: 'gendarme', nom: NF.t('Gendarme'), icone: '👮', niveau: 3, secteur: 'armee',
     desc: NF.t('Militaire au service de la sécurité publique. Logé en caserne.'),
     salaire: [1900, 2300], penibilite: 16, risque: 0.02, pa: 1, stabilite: 0.003, chance: 0.3,
-    xp: { administratif: 6, soins: 4, conduite: 4 }, prerequis: { hygiene: 60, domiciliation: true, casierVierge: true, diplome: 'bac', ageMax: 35, jauges: { sante: { min: 55 } } } },
+    xp: { administratif: 6, soins: 4, conduite: 4, sport: 4 }, prerequis: { hygiene: 60, domiciliation: true, casierVierge: true, diplome: 'bac', competences: { sport: 1 }, ageMax: 35, jauges: { sante: { min: 55 } } } },
 
   { id: 'pompier', nom: NF.t('Sapeur-pompier'), icone: '🚒', niveau: 3, secteur: 'securite',
     desc: NF.t('Secours aux personnes, incendies, accidents. Physique et nerfs solides.'),
     salaire: [1700, 2100], penibilite: 20, risque: 0.03, pa: 1, chance: 0.3,
-    xp: { soins: 10, technique: 4 }, prerequis: { hygiene: 55, domiciliation: true, casierVierge: true, competences: { soins: 2 }, ageMax: 40, jauges: { sante: { min: 60 } } } },
+    xp: { soins: 10, technique: 4, sport: 8 }, prerequis: { hygiene: 55, domiciliation: true, casierVierge: true, competences: { soins: 2, sport: 2 }, ageMax: 40, jauges: { sante: { min: 60 } } } },
 
   { id: 'officier', nom: NF.t('Officier'), icone: '⭐', niveau: 4, secteur: 'armee',
     desc: NF.t('Lieutenant, capitaine : commander une compagnie, gérer des hommes et du matériel.'),
     salaire: [2600, 3400], penibilite: 16, risque: 0.015, pa: 1, stabilite: 0.002,
-    xp: { gestion: 10, technique: 4 }, prerequis: { hygiene: 60, adresse: true, casierVierge: true, diplome: ['bac', 'licence', 'master'], competences: { gestion: 2, lecture: 3 }, experience: { armee: 36 } } },
+    xp: { gestion: 10, technique: 4, sport: 3 }, prerequis: { hygiene: 60, adresse: true, casierVierge: true, diplome: ['bac', 'licence', 'master'], competences: { gestion: 2, lecture: 3, sport: 2 }, experience: { armee: 36 } } },
 
   { id: 'officier_superieur', nom: NF.t('Officier supérieur'), icone: '🌟', niveau: 5, secteur: 'armee',
     desc: NF.t('Commandant, colonel : à la tête d\'un régiment ou d\'un état-major.'),
     salaire: [4000, 6000], penibilite: 14, risque: 0.005, pa: 1, stabilite: 0.002,
-    xp: { gestion: 8 }, prerequis: { hygiene: 65, adresse: true, casierVierge: true, competences: { gestion: 4 }, experience: { armee: 120 } } },
+    xp: { gestion: 8 }, prerequis: { hygiene: 65, adresse: true, casierVierge: true, competences: { gestion: 4, sport: 1 }, experience: { armee: 120 } } },
 
   /* =============== LOISIRS ET TALENTS (compétences annexes) ===============
    * Des métiers ouverts par les compétences annexes de data/competences.js.

@@ -7,7 +7,8 @@
  * (la mort y est une issue possible, voir docs/03 « Issues mortelles »),
  * blessures, permissions, fin de contrat, bizutage, décoration, stages,
  * reconversion, couple à distance, vie de caserne, recrutement à la rue,
- * saut d'entraînement, franchissement, forcené.
+ * saut d'entraînement, franchissement, forcené. La compétence sport
+ * (principale) réduit les risques physiques et progresse en caserne.
  * Famille 'travail'. Les ids de métiers sont ceux de data/metiers.js
  * (secteur 'armee' et 'securite') ; les militaires sont logés en
  * caserne (logement 'caserne').
@@ -133,7 +134,7 @@
           aleatoire: [
             { poids: 5.5, effets: { energie: -16, moral: 4, reputation: 6, xp: { technique: 6 } }, resultat: NF.t('Vous tenez le muret pendant que les autres décrochent. Le dernier chargeur vidé, vous courez. Citation à l\'ordre de la brigade.') },
             { poids: 3, effets: { sante: -18, energie: -18, moral: -6, reputation: 5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous tenez, trop longtemps. Touché à l\'épaule en courant rejoindre les autres. Ils vous portent sur le dernier kilomètre.') },
-            { poids: mortel(1.4), effets: { mort: NF.t('en couvrant le repli de sa section') }, resultat: NF.t('Vous tenez. Les autres rentrent. Le muret, lui, n\'a tenu que le temps qu\'il fallait.') }
+            { poids: mortel(1.4, 'sport'), effets: { mort: NF.t('en couvrant le repli de sa section') }, resultat: NF.t('Vous tenez. Les autres rentrent. Le muret, lui, n\'a tenu que le temps qu\'il fallait.') }
           ] }
       ] },
 
@@ -145,7 +146,7 @@
           aleatoire: [
             { poids: function (s) { return 5.5 + niveau(s, 'soins'); }, effets: { energie: -16, moral: 5, reputation: 6, xp: { soins: 12, sport: 6 } }, resultat: NF.t('Trente mètres aller, trente retour en le traînant par le gilet. Le garrot, l\'évacuation. Il vivra, et il le sait.') },
             { poids: 2.5, effets: { sante: -18, energie: -18, moral: -4, reputation: 5, drapeaux: { opex_blesse: true } }, resultat: NF.t('Vous le ramenez, touché vous-même au passage. Deux civières côte à côte dans l\'hélicoptère.') },
-            { poids: mortel(1.3), effets: { mort: NF.t('en allant chercher un camarade blessé') }, resultat: NF.t('Le tireur attendait ça. Vous tombez à dix mètres de lui.') }
+            { poids: mortel(1.3, 'sport'), effets: { mort: NF.t('en allant chercher un camarade blessé') }, resultat: NF.t('Le tireur attendait ça. Vous tombez à dix mètres de lui.') }
           ] },
         { texte: NF.t('Attendre le binôme d\'extraction, sous couverture'),
           aleatoire: [
@@ -277,7 +278,7 @@
         { texte: NF.t('Passer à l\'infirmerie'), effets: { sante: -7, energie: -8, moral: -2, xp: { soins: 4 } }, resultat: NF.t('Strapping, anti-inflammatoires, dix jours d\'exemption de sport. Le médecin note tout dans votre livret.') },
         { texte: NF.t('Serrer les dents pour ne pas rater la qualification'),
           aleatoire: [
-            { poids: 5, effets: { sante: -6, energie: -10, reputation: 2, xp: { technique: 4 } }, resultat: NF.t('Vous finissez l\'exercice en boitant. Le chef de section a vu, et a apprécié.') },
+            { poids: function (s) { return 5 + 1.5 * niveau(s, 'sport'); }, effets: { sante: -6, energie: -10, reputation: 2, xp: { technique: 4, sport: 4 } }, resultat: NF.t('Vous finissez l\'exercice en boitant. Le chef de section a vu, et a apprécié.') },
             { poids: 5, effets: { sante: -14, energie: -12, moral: -4, maladie: { nom: NF.t('Entorse mal soignée'), duree: 2, sante: 4 } }, resultat: NF.t('L\'entorse devient une déchirure. Six semaines d\'arrêt, et la qualification est repoussée de toute façon.') }
           ] },
         { texte: NF.t('Me soigner avec ma trousse'), conditions: { objet: 'trousse_soins' }, effets: { sante: -4, energie: -6 }, resultat: NF.t('Bande, glace, repos le soir. Ça tient.') }
@@ -390,13 +391,14 @@
 
     /* ---------------- 7. Stage de qualification ---------------- */
     { id: 'arm_formation_qualifiante', famille: 'travail', icone: '🎓', titre: NF.t('Stage de qualification'),
-      texte: NF.t('Le bureau instruction ouvre des places en stage pour le prochain trimestre : secourisme au combat, permis militaire poids lourd et tout-terrain, ou maintenance et transmissions. Trois semaines, solde maintenue, journées longues.'),
+      texte: NF.t('Le bureau instruction ouvre des places en stage pour le prochain trimestre : secourisme au combat, permis militaire poids lourd et tout-terrain, maintenance et transmissions, ou moniteur d\'entraînement physique. Trois semaines, solde maintenue, journées longues.'),
       poids: 2, delai: 12,
       conditions: { secteur: 'armee', formation: false },
       choix: [
         { texte: NF.t('Secourisme au combat'), effets: { xp: { soins: 40 }, energie: -8, moral: 3 }, resultat: NF.t('Garrots, perfusions, évacuations sous pression. Vous repartez avec un brevet et des gestes qui ne s\'oublient pas.') },
         { texte: NF.t('Permis militaire (poids lourd, tout-terrain)'), effets: { xp: { conduite: 55 }, energie: -8, moral: 3 }, resultat: NF.t('Camions, pistes boueuses, conduite de nuit sans phares. Le brevet militaire se convertit en permis civil.') },
         { texte: NF.t('Maintenance et transmissions'), effets: { xp: { technique: 40, informatique: 8 }, energie: -8, moral: 3 }, resultat: NF.t('Moteurs, radios, câblages. Trois semaines d\'atelier et une qualification qui vaut aussi dehors.') },
+        { texte: NF.t('Moniteur d\'entraînement physique'), effets: { xp: { sport: 40, soins: 6 }, energie: -10, moral: 3 }, resultat: NF.t('Trois semaines de parcours, de natation et de pédagogie. Vous repartez avec un brevet, et des recrues à faire courir.') },
         { texte: NF.t('Pas cette fois'), effets: { energie: 4 }, resultat: NF.t('Vous restez à l\'unité. Les places partent à d\'autres.') }
       ] },
 
@@ -504,6 +506,7 @@
             { poids: 3, effets: { moral: 4, argent: -40, hygiene: -6, energie: -8, reputation: -2 }, resultat: NF.t('Retour après l\'appel, chambrée réveillée, rapport du sous-officier de permanence. Une bonne soirée, chère payée.') }
           ] },
         { texte: NF.t('Profiter du calme : lessive, rangement, sommeil'), effets: { hygiene: 12, energie: 10, moral: 2 }, resultat: NF.t('Le placard impeccable, les rangers cirées, dix heures de sommeil. La revue de vendredi sera une formalité.') },
+        { texte: NF.t('Séance de sport avec la section'), effets: { xp: { sport: 14 }, sante: 3, energie: -6, moral: 3, reputation: 1 }, resultat: NF.t('Footing en formation, parcours d\'obstacles, pompes jusqu\'à la nausée. Le corps proteste, puis suit.') },
         { texte: NF.t('Donner un coup de main en cuisine'), effets: { xp: { cuisine: 10 }, nourriture: 12, reputation: 1, energie: -5 }, resultat: NF.t('Quatre cents couverts, et un plat à emporter en remerciement. Le cuisinier retiendra votre nom.') }
       ] },
 

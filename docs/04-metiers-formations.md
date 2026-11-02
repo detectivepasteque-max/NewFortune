@@ -114,10 +114,18 @@ Niveau = `xp / config.xpParNiveau` (100), maximum `config.niveauMax` (5).
 La culture générale (compétence annexe `culture`) ajoute +4 % d'xp par niveau
 à toutes les séances d'étude.
 
+Le **sport** (`sport`, compétence principale) se pratique avec l'action
+« Marcher, courir, respirer » et dans la vie de caserne. Il est exigé par les
+métiers militaires, la gendarmerie et les pompiers (niveau 1 à 2 selon le
+grade, à l'embauche comme pour les promotions ; la Légion prend sans), y
+progresse chaque mois, et réduit le risque des missions et exercices
+(`NF.api.poidsMortel`, voir `03`). Comme pour toute compétence requise, chaque
+niveau au-delà du minimum donne +8 % de chance à l'embauche.
+
 ### Compétences annexes (loisirs et talents)
 
 Les compétences marquées `annexe: true` (musique, pêche, dessin, écriture,
-photographie, jardinage, couture, théâtre, danse, sport, échecs, jonglage,
+photographie, jardinage, couture, théâtre, danse, échecs, jonglage,
 méditation, cueillette, animaux, coiffure, culture générale, magie) sont
 affichées dans une section à part de l'onglet Savoir. Elles s'étudient comme
 les autres, mais progressent surtout en pratiquant : chaque action de la
