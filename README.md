@@ -93,7 +93,6 @@ Tout est expliqué dans le dossier `docs/` :
 | `docs/10-sauvegarde-meta.md` | Sauvegarde, score, bonus permanents |
 | `docs/11-reference-api.md` | Référence des fonctions `NF.api` et `NF.core` |
 | `docs/12-langues.md` | Traduire le jeu, ajouter une langue |
-| `docs/13-partager.md` | Faire connaître le jeu : pitch, image de partage, où publier |
 
 Règle d'or : **les identifiants (`id`) sont des chaînes sans accent ni espace,
 uniques dans leur liste**. Pour ajouter du contenu, copiez une entrée existante,
