@@ -9,7 +9,8 @@
  * français tant qu'il n'est pas traduit : rien ne casse.
  *
  * La langue vient de localStorage ('nf_langue'), sinon de la langue du
- * navigateur, sinon le français. Changer de langue recharge la page
+ * navigateur, sinon l'anglais (le français reste la langue source des
+ * textes). Changer de langue recharge la page
  * (NF.i18n.changer), car les données sont traduites au chargement.
  *
  * Marqueur d'échec : un texte de résultat d'action qui commence par
@@ -33,8 +34,8 @@
   var langue = null;
   try { langue = localStorage.getItem('nf_langue'); } catch (e) { /* stockage indisponible */ }
   if (ids.indexOf(langue) < 0) {
-    var nav = String(navigator.language || navigator.userLanguage || 'fr').slice(0, 2).toLowerCase();
-    langue = ids.indexOf(nav) >= 0 ? nav : 'fr';
+    var nav = String(navigator.language || navigator.userLanguage || 'en').slice(0, 2).toLowerCase();
+    langue = ids.indexOf(nav) >= 0 ? nav : 'en';   // langue du navigateur non proposée : anglais
   }
   var MARQUEUR = '​';
   var ECHEC = /^(Impossible|Il faut|Il vous manque|Plus de place|Vous n'avez pas|Personne n'en|Introuvable|Prérequis|Métier inconnu|Recette inconnue|Formation inconnue|Compétence inconnue|Montant invalide|Ce statut|Trésorerie insuffisante|Aucun employé|Plus d'investissement|La banque refuse|Une micro-entreprise|Licenciez|Cet objet agit|Pas d'entreprise)/;

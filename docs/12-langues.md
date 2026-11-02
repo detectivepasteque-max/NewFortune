@@ -4,7 +4,7 @@ Le jeu est jouable en **français, anglais, espagnol, allemand et italien**. Le
 choix se fait avec les boutons de l'écran titre (en jeu : « ☰ Menu » ramène à
 l'écran titre, la partie est sauvegardée). La langue est mémorisée dans le
 navigateur (`localStorage`, clé `nf_langue`) ; à la première visite, c'est la
-langue du navigateur si elle est disponible, sinon le français.
+langue du navigateur si elle est disponible, sinon l'anglais.
 
 ## Comment ça marche
 
