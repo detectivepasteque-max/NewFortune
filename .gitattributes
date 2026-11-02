@@ -1,0 +1,5 @@
+# Fins de ligne LF partout (convention du projet), quel que soit le système
+* text=auto eol=lf
+*.zip binary
+*.png binary
+*.jpg binary
