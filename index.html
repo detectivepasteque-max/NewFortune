@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Nouvelle Fortune – un roguelike de survie urbaine au tour par tour. Survivez, gravissez l'échelle sociale, transmettez.">
+  <title>Nouvelle Fortune</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌃</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app"></div>
+  <div id="modale" class="modale cachee" aria-live="polite"></div>
+  <div id="toast" class="toast cachee"></div>
+
+  <!-- ====================================================================
+       ORDRE DE CHARGEMENT (important)
+       0. langues        : NF.t et les dictionnaires (lang/), avant tout le reste
+       1. socle          : espace de noms + générateur aléatoire
+       2. données        : constantes et contenu du jeu (modifiables)
+       3. moteur         : règles du jeu
+       4. événements     : après le moteur (NF.ajouterEvenements)
+       5. interface      : affichage
+       Pour ajouter un fichier d'événements : copiez une ligne de la section 4.
+       ==================================================================== -->
+
+  <!-- 0. langues (voir src/i18n.js ; un dictionnaire par langue dans lang/) -->
+  <script src="src/i18n.js"></script>
+  <script src="lang/en.js"></script>
+  <script src="lang/es.js"></script>
+  <script src="lang/de.js"></script>
+  <script src="lang/it.js"></script>
+
+  <!-- 1. socle -->
+  <script src="src/nf.js"></script>
+  <script src="src/core/rng.js"></script>
+
+  <!-- 2. données -->
+  <script src="data/config.js"></script>
+  <script src="data/traits.js"></script>
+  <script src="data/noms.js"></script>
+  <script src="data/ville.js"></script>
+  <script src="data/competences.js"></script>
+  <script src="data/logements.js"></script>
+  <script src="data/classes.js"></script>
+  <script src="data/impots.js"></script>
+  <script src="data/objets.js"></script>
+  <script src="data/recettes.js"></script>
+  <script src="data/formations.js"></script>
+  <script src="data/metiers.js"></script>
+  <script src="data/entreprise.js"></script>
+  <script src="data/bonus.js"></script>
+  <script src="data/succes.js"></script>
+  <script src="data/actions.js"></script>
+
+  <!-- 3. moteur -->
+  <script src="src/core/api.js"></script>
+  <script src="src/core/etat.js"></script>
+  <script src="src/core/emploi.js"></script>
+  <script src="src/core/fabrication.js"></script>
+  <script src="src/core/evenements.js"></script>
+  <script src="src/core/economie.js"></script>
+  <script src="src/core/famille.js"></script>
+  <script src="src/core/entreprise.js"></script>
+  <script src="src/core/tour.js"></script>
+  <script src="src/core/score.js"></script>
+  <script src="src/core/sauvegarde.js"></script>
+
+  <!-- 4. événements -->
+  <script src="data/evenements/systeme.js"></script>
+  <script src="data/evenements/sante.js"></script>
+  <script src="data/evenements/securite.js"></script>
+  <script src="data/evenements/social.js"></script>
+  <script src="data/evenements/administratif.js"></script>
+  <script src="data/evenements/travail.js"></script>
+  <script src="data/evenements/economie.js"></script>
+  <script src="data/evenements/famille.js"></script>
+  <script src="data/evenements/armee.js"></script>
+  <script src="data/evenements/divers.js"></script>
+  <script src="data/evenements/loisirs.js"></script>
+
+  <!-- 5. interface -->
+  <script src="src/ui/dom.js"></script>
+  <script src="src/ui/scene.js"></script>
+  <script src="src/ui/titre.js"></script>
+  <script src="src/ui/jeu.js"></script>
+  <script src="src/ui/onglets.js"></script>
+  <script src="src/ui/modales.js"></script>
+  <script src="src/ui/app.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
