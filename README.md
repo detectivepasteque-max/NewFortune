@@ -6,6 +6,10 @@ mois. Survivez, gravissez l'échelle sociale, fondez une famille, transmettez…
 et recommencez avec un héritier, après des droits de succession volontairement
 lourds.
 
+**Jouer en ligne : <https://detectivepasteque-max.github.io/NewFortune/>**
+
+![Écran titre de Nouvelle Fortune : une ville la nuit](docs/images/apercu.jpg)
+
 Le jeu est jouable en **français, anglais, espagnol, allemand et italien**
 (boutons sur l'écran titre).
 
@@ -89,6 +93,7 @@ Tout est expliqué dans le dossier `docs/` :
 | `docs/10-sauvegarde-meta.md` | Sauvegarde, score, bonus permanents |
 | `docs/11-reference-api.md` | Référence des fonctions `NF.api` et `NF.core` |
 | `docs/12-langues.md` | Traduire le jeu, ajouter une langue |
+| `docs/13-partager.md` | Faire connaître le jeu : pitch, image de partage, où publier |
 
 Règle d'or : **les identifiants (`id`) sont des chaînes sans accent ni espace,
 uniques dans leur liste**. Pour ajouter du contenu, copiez une entrée existante,

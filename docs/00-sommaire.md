@@ -27,6 +27,7 @@
 | [10-sauvegarde-meta.md](10-sauvegarde-meta.md) | Sauvegarde, export/import, score, bonus permanents, graine |
 | [11-reference-api.md](11-reference-api.md) | Référence des fonctions utilisables dans les données |
 | [12-langues.md](12-langues.md) | Traduction : comment les textes sont traduits, traduire du nouveau contenu, ajouter une langue |
+| [13-partager.md](13-partager.md) | Faire connaître le jeu : textes prêts à coller, image de partage, où publier |
 
 ## Conventions
 
