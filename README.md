@@ -62,6 +62,7 @@ data/                   TOUT LE CONTENU MODIFIABLE
 src/                    LE MOTEUR ET L'INTERFACE
   i18n.js               langues : NF.t('texte français') et choix de la langue
   nf.js                 espace de noms global NF + utilitaires
+  compteurs.js          compteurs globaux de l'écran titre (joueurs, vies créées), via un service public
   core/                 règles du jeu (tour, économie, événements, famille…)
   ui/                   affichage (écran titre, écran de jeu, onglets, modales, scène)
   main.js               point d'entrée

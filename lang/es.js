@@ -3105,6 +3105,12 @@ NF.i18n.dictionnaires.es = {
   "Centre social": "Centro social",
   "Ateliers, aide aux démarches, garde d'enfants.": "Talleres, ayuda con los trámites, cuidado de niños.",
 
+  /* ----- src/compteurs.js ----- */
+  " joueurs": " jugadores",
+  " joueur": " jugador",
+  " vies créées": " vidas creadas",
+  " vie créée": " vida creada",
+
   /* ----- src/core/api.js ----- */
   " passe au niveau ": " pasa al nivel ",
   "🚗 Vous obtenez le permis de conduire.": "🚗 Obtienes el carné de conducir.",

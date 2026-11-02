@@ -3105,6 +3105,12 @@ NF.i18n.dictionnaires.de = {
   "Centre social": "Nachbarschaftszentrum",
   "Ateliers, aide aux démarches, garde d'enfants.": "Workshops, Hilfe bei Behördengängen, Kinderbetreuung.",
 
+  /* ----- src/compteurs.js ----- */
+  " joueurs": " Spieler",
+  " joueur": " Spieler",
+  " vies créées": " erschaffene Leben",
+  " vie créée": " erschaffenes Leben",
+
   /* ----- src/core/api.js ----- */
   " passe au niveau ": " steigt auf Stufe ",
   "🚗 Vous obtenez le permis de conduire.": "🚗 Sie erhalten den Führerschein.",

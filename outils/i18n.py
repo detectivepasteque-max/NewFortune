@@ -58,6 +58,8 @@ MAJUSCULE = re.compile(r'[A-ZÀ-Ö]')
 BALISE = re.compile(r'<[^>]*>|&[#\w]+;')
 CODE_LANGUE = re.compile(r'^[A-Za-z]{2}-[A-Za-z]{2}$')
 CAMEL = re.compile(r'^[a-z]+(?:[A-Z][a-z0-9]*)+$')                 # usureMoral, depensesFixes
+HOTE = re.compile(r'^[a-z0-9-]+(?:\.[a-z0-9-]+)+$')               # detectivepasteque-max.github.io
+CHEMIN = re.compile(r'^/[\w/.-]*$')                                # /hit/, /get/ (chemins d'API)
 COULEUR = re.compile(r'^#[0-9A-Fa-f]{3,8}$')
 TRACE_SVG = re.compile(r'^\s*(?:[MLHVCSQTAZmlhvcsqtaz][\s\-0-9.,]*)+$')   # données de chemin SVG ('M10 20 l-4 8')
 PROPRIETE_CSS = re.compile(r'[a-z]:[^ ]*$')                        # 'background:' / 's;animation-delay:-'
@@ -212,6 +214,8 @@ def est_affichable(valeur, avant, apres, rel):
             return False
     if CODE_LANGUE.match(valeur) or CAMEL.match(valeur) or COULEUR.match(valeur) or TECHNIQUE.match(valeur):
         return False
+    if '://' in valeur or HOTE.match(valeur) or CHEMIN.match(valeur):
+        return False                                 # URL, nom d'hôte, chemin d'API (src/compteurs.js)
     if TRACE_SVG.match(contenu) and re.search(r'\d', contenu):
         return False
     if PROPRIETE_CSS.search(contenu) and ' :' not in contenu:

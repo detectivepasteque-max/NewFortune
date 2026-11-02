@@ -3105,6 +3105,12 @@ NF.i18n.dictionnaires.en = {
   "Centre social": "Community centre",
   "Ateliers, aide aux démarches, garde d'enfants.": "Workshops, help with paperwork, childcare.",
 
+  /* ----- src/compteurs.js ----- */
+  " joueurs": " players",
+  " joueur": " player",
+  " vies créées": " lives created",
+  " vie créée": " life created",
+
   /* ----- src/core/api.js ----- */
   " passe au niveau ": " moves up to level ",
   "🚗 Vous obtenez le permis de conduire.": "🚗 You get your driving licence.",

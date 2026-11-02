@@ -8,7 +8,9 @@ fonctions appelées plus tard, en jeu, peuvent utiliser tout).
 
 0. **Langues** : `src/i18n.js` (`NF.t`, langue courante), puis les
    dictionnaires `lang/*.js` (voir `12-langues.md`).
-1. **Socle** : `src/nf.js` (objet global `NF`, utilitaires `NF.util`),
+1. **Socle** : `src/nf.js` (objet global `NF`, utilitaires `NF.util`), puis
+   `src/compteurs.js` (compteurs globaux joueurs / vies, voir `12-langues.md`
+   pour les textes et l'en-tête du fichier pour le service utilisé),
    `src/core/rng.js` (générateur aléatoire à graine, `NF.rng`).
 2. **Données** : tous les fichiers de `data/` sauf les événements.
 3. **Moteur** : `src/core/*.js`.
@@ -28,6 +30,7 @@ fonctions appelées plus tard, en jeu, peuvent utiliser tout).
 | `NF.util` | Petits utilitaires (euros, clamp, saison…) | `src/nf.js` |
 | `NF.rng` | Générateur aléatoire de la partie en cours (`random`, `int`, `chance`, `pick`, `pondere`…) | `src/core/rng.js` |
 | `NF.t`, `NF.i18n` | Traduction : `NF.t('texte français')` rend le texte dans la langue choisie ; dictionnaires dans `lang/` (voir `12`) | `src/i18n.js`, `lang/` |
+| `NF.compteurs` | Compteurs globaux affichés sur l'écran titre (joueurs, vies créées) : `nouvelleVie()`, `lire()`, `texte()` ; service public Abacus, incréments seulement depuis le site publié (`HOTES`) | `src/compteurs.js` |
 
 ## L'état d'une partie (`s`)
 

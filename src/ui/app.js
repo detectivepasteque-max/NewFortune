@@ -88,6 +88,7 @@
   App.nouvellePartie = function (graine) {
     var meta = C.chargerMeta();
     App.s = C.nouvellePartie(graine, meta);
+    NF.compteurs.nouvelleVie();
     App.vue.ecran = 'jeu'; App.vue.onglet = 'actions'; App.vue.categorie = 'survie'; App.vue.dernierResultat = null; App.vue.modale = null;
     App.sauver();
     App.rendre();
@@ -210,6 +211,7 @@
         return;
       case 'heritier': {
         var resume = C.succession(s, +arg);
+        NF.compteurs.nouvelleVie();
         v.modale = { type: 'succession', resume: resume };
         App.sauver(); App.rendre(); return;
       }

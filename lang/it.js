@@ -3105,6 +3105,12 @@ NF.i18n.dictionnaires.it = {
   "Centre social": "Centro sociale",
   "Ateliers, aide aux démarches, garde d'enfants.": "Laboratori, aiuto per le pratiche, custodia dei bambini.",
 
+  /* ----- src/compteurs.js ----- */
+  " joueurs": " giocatori",
+  " joueur": " giocatore",
+  " vies créées": " vite create",
+  " vie créée": " vita creata",
+
   /* ----- src/core/api.js ----- */
   " passe au niveau ": " passa al livello ",
   "🚗 Vous obtenez le permis de conduire.": "🚗 Ottieni la patente di guida.",

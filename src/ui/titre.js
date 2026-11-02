@@ -11,7 +11,7 @@
     var scores = NF.core.chargerScores();
     var aSauvegarde = NF.core.aSauvegarde();
     var h = '<div class="titre">';
-    h += NF.t('<div class="titre-entete"><h1>Nouvelle Fortune</h1><p class="sous-titre">Dix-huit ans, une ville, rien dans les poches. Survivre, s\'élever, transmettre.</p>') + UI.languesHtml() + '</div>';
+    h += NF.t('<div class="titre-entete"><h1>Nouvelle Fortune</h1><p class="sous-titre">Dix-huit ans, une ville, rien dans les poches. Survivre, s\'élever, transmettre.</p>') + UI.languesHtml() + '<p id="compteurs" class="compteurs petit muted">' + NF.compteurs.texte() + '</p></div>';
     h += '<div class="titre-scene">' + UI.sceneTitre() + '</div>';
     h += '<div class="titre-grille">';
 
