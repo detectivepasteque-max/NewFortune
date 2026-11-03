@@ -68,8 +68,9 @@ ressourcerie, −3 % par niveau de commerce. La voiture exige le permis.
 
 ## Nourriture automatique
 
-Chaque fin de mois, si le joueur a de l'argent, il achète de quoi remonter la
-jauge de faim jusqu'à 80 : 1,6 € par point avec une cuisine, 2,4 € sans,
+Chaque fin de mois, après l'usure des jauges, si le joueur a de l'argent, il
+achète de quoi remonter la jauge de faim jusqu'à 80 (il commence donc le mois
+nourri, et la santé peut récupérer) : 1,6 € par point avec une cuisine, 2,4 € sans,
 × `passif.nourritureCout` (réchaud 0,6), −5 % par niveau de cuisine, × trait
 (économe/dépensier). Sans argent, il faut les actions « Chercher de la
 nourriture » et « Repas à l'association », ou des conserves.

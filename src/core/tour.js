@@ -64,10 +64,10 @@
     C.moisImpots(s, bilan);
     C.moisLogement(s, bilan);
     C.moisTrainDeVie(s, bilan);
+    C.moisJauges(s, bilan);        // l'usure du mois d'abord : la nourriture achetée ensuite nourrit le mois qui commence
     C.moisNourriture(s, bilan);
     C.moisDettes(s, bilan);
     C.reglerBilan(s, bilan);
-    C.moisJauges(s, bilan);
     C.moisSante(s, bilan);
     C.usureObjets(s, bilan);
     C.moisConjoncture(s);

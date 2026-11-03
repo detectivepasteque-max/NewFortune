@@ -77,7 +77,10 @@
     if (montant > 0) bilan.depenses.push({ nom: NF.t('Train de vie (') + NF.util.minuscule(cl.nom) + ')', montant: montant });
   };
 
-  /* ----- Nourriture automatique (quand on a de l'argent) ----- */
+  /* ----- Nourriture automatique (quand on a de l'argent) -----
+   * Appelée après l'usure du mois (moisJauges) : ce qu'on achète nourrit
+   * le mois qui commence, et la jauge repart à 80 au lieu de rester
+   * coincée sous le seuil de récupération de santé. */
   C.moisNourriture = function (s, bilan) {
     var l = C.logementActuel(s);
     var j = s.joueur;

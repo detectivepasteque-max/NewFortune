@@ -83,8 +83,9 @@ phase 'actions'      le joueur dépense ses PA (NF.core.executerAction, actionGe
         ▼  bouton « Terminer le mois »
 NF.core.finDuMois(s)
    moisEmploi → moisFormation → moisEntreprise → moisAides → moisFamille
-   → moisImpots → moisLogement → moisTrainDeVie → moisNourriture → moisDettes
-   → reglerBilan (encaisse et paie) → moisJauges (usure, saison)
+   → moisImpots → moisLogement → moisTrainDeVie → moisJauges (usure, saison)
+   → moisNourriture (achète après l'usure : on commence le mois nourri) → moisDettes
+   → reglerBilan (encaisse et paie)
    → moisSante (faim, maladie, vieillesse) → usureObjets → moisConjoncture
    → moisVieillesse → recalculerClasse → verifierSucces → verifierMort
    → declencherProgrammes + tirerEvenements
