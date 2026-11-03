@@ -30,7 +30,7 @@ fonctions appelées plus tard, en jeu, peuvent utiliser tout).
 | `NF.util` | Petits utilitaires (euros, clamp, saison…) | `src/nf.js` |
 | `NF.rng` | Générateur aléatoire de la partie en cours (`random`, `int`, `chance`, `pick`, `pondere`…) | `src/core/rng.js` |
 | `NF.t`, `NF.i18n` | Traduction : `NF.t('texte français')` rend le texte dans la langue choisie ; dictionnaires dans `lang/` (voir `12`) | `src/i18n.js`, `lang/` |
-| `NF.compteurs` | Compteurs globaux affichés sur l'écran titre (joueurs, vies créées) : `nouvelleVie()`, `lire()`, `texte()` ; service public Abacus, incréments seulement depuis le site publié (`HOTES`) | `src/compteurs.js` |
+| `NF.compteurs` | Compteurs globaux affichés sur l'écran titre (joueurs, vies créées) : `nouvelleVie()`, `lire()`, `texte()` ; service public Abacus, incréments depuis tout site hébergeant le jeu, jamais en local (`LOCAUX`) | `src/compteurs.js` |
 
 ## L'état d'une partie (`s`)
 

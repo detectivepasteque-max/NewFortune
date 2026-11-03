@@ -9,9 +9,10 @@
  *   vies    : personnages créés (nouvelle partie ou héritier)
  * Rien de personnel n'est envoyé, juste un « +1 » ; le navigateur garde
  * seulement un repère local (localStorage nf_joueur) pour ne compter
- * qu'une fois. Les incréments ne partent que depuis le site publié
- * (HOTES) : en local ou depuis une copie, on lit sans compter. Sans
- * réseau, l'écran titre se passe simplement de la ligne.
+ * qu'une fois. Les incréments ne partent jamais d'un poste local
+ * (LOCAUX : localhost, fichier ouvert directement) : là, on lit sans
+ * compter. Depuis tout site qui héberge le jeu (GitHub Pages, itch.io…),
+ * on compte. Sans réseau, l'écran titre se passe simplement de la ligne.
  * Pour repartir de zéro : changer ESPACE. Le service est public : rien
  * n'empêche un petit malin de gonfler les chiffres.
  * ===================================================================== */
@@ -20,12 +21,12 @@
     URL: 'https://abacus.jasoncameron.dev',
     ESPACE: 'nouvelle-fortune-newfortune',
     CLES: ['joueurs', 'vies'],
-    HOTES: ['detectivepasteque-max.github.io'],
+    LOCAUX: ['localhost', '127.0.0.1', '[::1]', ''],   // hôtes de test : on lit sans compter
     valeurs: {},                                  // dernières valeurs lues, par clé
   };
 
-  /** Vrai si la page est servie par le site publié (seul endroit d'où l'on compte) */
-  K.estPublie = function () { return K.HOTES.indexOf(location.hostname) >= 0; };
+  /** Vrai si la page est servie par un site, et non en local : on ne compte que là */
+  K.estPublie = function () { return location.protocol !== 'file:' && K.LOCAUX.indexOf(location.hostname) < 0; };
 
   function requete(chemin, cb) {
     if (typeof fetch !== 'function') { cb(null); return; }
