@@ -326,3 +326,9 @@ label { display: block; font-size: .86rem; color: var(--texte-2); margin-bottom:
   .comp-ligne .comp-barre { grid-column: 1 / -1; }
   .modale-boite { padding: 1rem; }
 }
+
+/* Intégré dans un cadre (itch.io, autre site) : le cadre peut interdire le
+   défilement du document (scrolling="no"), alors c'est le conteneur du jeu
+   qui défile. La classe est posée par index.html quand window.top diffère. */
+html.integre, html.integre body { height: 100%; overflow: hidden; }
+html.integre .app { height: 100vh; overflow-y: auto; overflow-x: hidden; }
