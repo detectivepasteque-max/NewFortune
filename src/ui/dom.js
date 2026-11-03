@@ -61,6 +61,25 @@
     return '<span class="etiquette pa">' + n + NF.t(' PA</span>');
   };
 
+  /** Coûts fixes d'une action (champ `cout` de data/actions.js) : pastilles « ⚡ −10 » sur la carte */
+  UI.coutHtml = function (cout) {
+    if (!cout) return '';
+    var L = NF.api.LIBELLES;
+    return Object.keys(cout).map(function (k) {
+      return '<span class="etiquette cout" title="' + esc(L[k] ? L[k].nom : k) + '">' + (L[k] ? L[k].icone : '') + ' −' + cout[k] + '</span>';
+    }).join('');
+  };
+
+  /** Variations attendues en fin de mois (NF.core.usurePrevue), en pastilles signées */
+  UI.usureHtml = function (u) {
+    var L = NF.api.LIBELLES;
+    return ['nourriture', 'energie', 'hygiene', 'moral', 'sante'].map(function (k) {
+      var v = Math.round(u[k] + (k === 'energie' ? u.travail : 0));
+      if (!v) return '';
+      return '<span class="delta ' + (v > 0 ? 'plus' : 'moins') + '" title="' + esc(L[k].nom) + '">' + L[k].icone + ' ' + U.signe(v) + '</span>';
+    }).join('');
+  };
+
   UI.barreNiveau = function (niveau, max) {
     var h = '<span class="niveau-points">';
     for (var i = 0; i < (max || 5); i++) h += '<i class="' + (i < niveau ? 'plein' : '') + '"></i>';

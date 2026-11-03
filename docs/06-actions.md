@@ -12,6 +12,7 @@ directement des fonctions du moteur (`postuler`, `changerLogement`, `etudier`,
   categorie: 'soin',        // survie | soin | social | travail | loisirs | famille (onglets de filtre)
   desc: 'Le parc, les quais, n\'importe où.',
   pa: 1,                    // coût en PA (0 = gratuit)
+  cout: { energie: 4 },     // optionnel : coûts fixes affichés sur la carte (« ⚡ −4 ») ; informatif, c'est `effet` qui les applique
   conditions: { logementOrdreMax: 3 },           // déclaratif (voir 03-evenements.md)
   condition: function (s) { return true; },      // optionnel
   visible: function (s) { return true; },        // optionnel : cacher l'action

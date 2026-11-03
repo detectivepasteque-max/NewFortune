@@ -330,29 +330,47 @@
   };
 
   /* ----- Logement ----- */
+  /** Conditions d'accès à un logement : { ok, raisons, depot, distance }.
+   *  `distance` estime l'effort qui reste (0 = accessible, Infinity = impossible ici) et sert à
+   *  désigner la « prochaine étape » de l'onglet Logement (C.prochainLogement). */
   C.conditionsLogement = function (s, id) {
     var l = U.byId(NF.data.logements, id);
-    if (!l) return { ok: false, raisons: ['inconnu'] };
-    var r = [];
-    if (l.id === s.joueur.logement) r.push(NF.t('vous y êtes déjà'));
+    if (!l) return { ok: false, raisons: ['inconnu'], distance: Infinity };
+    var r = [], d = 0;
+    if (l.id === s.joueur.logement) { r.push(NF.t('vous y êtes déjà')); d = Infinity; }
     var a = l.acces || {};
     var depot = l.proprietaire ? l.prix : (l.loyer * NF.data.config.depotGarantie + l.loyer);
-    if (a.argent != null && s.joueur.argent < Math.max(a.argent, depot)) r.push(NF.t('il faut ') + U.euros(Math.max(a.argent, depot)) + NF.t(' (dépôt et premier loyer)'));
-    if (a.revenuMensuel != null && C.revenuMensuel(s) < a.revenuMensuel) r.push(NF.t('revenus de ') + U.euros(a.revenuMensuel) + NF.t('/mois exigés'));
+    var besoin = Math.max(a.argent || 0, depot), revenu = C.revenuMensuel(s);
+    if (a.argent != null && s.joueur.argent < besoin) { r.push(NF.t('il faut ') + U.euros(besoin) + NF.t(' (dépôt et premier loyer ; vous avez ') + U.euros(s.joueur.argent) + ')'); d += (besoin - s.joueur.argent) / 300; }
+    if (a.revenuMensuel != null && revenu < a.revenuMensuel) { r.push(NF.t('revenus de ') + U.euros(a.revenuMensuel) + NF.t('/mois exigés (vous avez ') + U.euros(revenu) + ')'); d += (a.revenuMensuel - revenu) / 300; }
     if (a.emploiMois != null) {
       var m = C.metierActuel(s);
       var ok = (m && !m.nonDeclare && s.joueur.emploi.mois >= a.emploiMois) || (s.joueur.entreprise && s.joueur.entreprise.mois >= a.emploiMois * 2);
-      if (!ok) r.push(a.emploiMois + NF.t(' mois d\'emploi déclaré exigés (fiches de paie)'));
+      if (!ok) { r.push(a.emploiMois + NF.t(' mois d\'emploi déclaré exigés (fiches de paie)')); d += 2; }
     }
-    if (a.domiciliation && !s.joueur.domiciliation) r.push(NF.t('domiciliation nécessaire'));
-    if (a.reputation != null && s.joueur.reputation < a.reputation) r.push(NF.t('réputation ') + a.reputation + NF.t(' requise'));
-    if (a.lieu && !C.aLieu(s, a.lieu)) r.push(NF.t('pas de lieu adapté dans cette ville'));
-    if (a.objet && !NF.api.aObjet(s, a.objet)) { var o = U.byId(NF.data.objets, a.objet); r.push(NF.t('il faut : ') + (o ? o.nom : a.objet)); }
-    if (a.drapeau && !s.joueur.drapeaux[a.drapeau]) r.push(NF.t('personne ne vous a proposé ce logement'));
-    if (a.secteurEmploi) { var mt = C.metierActuel(s); if (!mt || mt.secteur !== a.secteurEmploi) r.push(NF.t('réservé aux personnels en service (') + a.secteurEmploi + ')'); }
-    if (l.id === 'foyer' && s.joueur.drapeaux.foyer_interdit) r.push(NF.t('vous êtes interdit de foyer pour le moment'));
-    if (l.capacite < 1 + (s.joueur.famille.partenaire ? 1 : 0) + s.joueur.famille.enfants.length) r.push(NF.t('trop petit pour votre famille'));
-    return { ok: r.length === 0, raisons: r, depot: depot };
+    if (a.domiciliation && !s.joueur.domiciliation) { r.push(NF.t('domiciliation nécessaire')); d += 1; }
+    if (a.reputation != null && s.joueur.reputation < a.reputation) { r.push(NF.t('réputation ') + a.reputation + NF.t(' requise (vous avez ') + Math.round(s.joueur.reputation) + ')'); d += (a.reputation - s.joueur.reputation) / 5; }
+    if (a.lieu && !C.aLieu(s, a.lieu)) { r.push(NF.t('pas de lieu adapté dans cette ville')); d = Infinity; }
+    if (a.objet && !NF.api.aObjet(s, a.objet)) { var o = U.byId(NF.data.objets, a.objet); r.push(NF.t('il faut : ') + (o ? o.nom : a.objet)); d += 5; }
+    if (a.drapeau && !s.joueur.drapeaux[a.drapeau]) { r.push(NF.t('personne ne vous a proposé ce logement')); d += 6; }
+    if (a.secteurEmploi) { var mt = C.metierActuel(s); if (!mt || mt.secteur !== a.secteurEmploi) { r.push(NF.t('réservé aux personnels en service (') + a.secteurEmploi + ')'); d = Infinity; } }
+    if (l.id === 'foyer' && s.joueur.drapeaux.foyer_interdit) { r.push(NF.t('vous êtes interdit de foyer pour le moment')); d += 3; }
+    if (l.capacite < 1 + (s.joueur.famille.partenaire ? 1 : 0) + s.joueur.famille.enfants.length) { r.push(NF.t('trop petit pour votre famille')); d = Infinity; }
+    return { ok: r.length === 0, raisons: r, depot: depot, distance: r.length ? d : 0 };
+  };
+
+  /** Le logement à viser : le moins élevé accessible dès maintenant au-dessus de l'actuel,
+   *  sinon le plus proche (distance de conditionsLogement). Null si rien n'est atteignable. */
+  C.prochainLogement = function (s) {
+    var actuel = C.logementActuel(s), best = null;
+    NF.data.logements.forEach(function (l) {
+      if (l.ordre <= actuel.ordre) return;
+      var v = C.conditionsLogement(s, l.id);
+      if (!isFinite(v.distance)) return;
+      var d = v.ok ? -1 : v.distance;
+      if (!best || d < best.d || (d === best.d && l.ordre < best.l.ordre)) best = { l: l, v: v, d: d };
+    });
+    return best;
   };
 
   /** Déménage (en payant ce qu'il faut). Retourne un texte. */

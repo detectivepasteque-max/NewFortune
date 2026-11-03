@@ -43,13 +43,15 @@ données (événements, actions, bonus) ; `NF.core` contient les règles.
 | `revenuMensuel(s)` / `patrimoine(s)` / `emploiStable(s)` | finances |
 | `verifierConditions(s, conditions)` | `{ ok, raisons }` |
 | `texteConjoncture(s)` | `{ nom, icone }` |
+| `usurePrevue(s)` / `penibiliteMensuelle(s, m)` | variations attendues en fin de mois, négatif = perte (`travail` : énergie que prendra l'emploi) ; énergie mensuelle d'un métier |
+| `prochainLogement(s)` | `{ l, v, d }` : logement à viser et ses conditions (affiché dans l'onglet Logement), ou null |
 
 ## `NF.core` – actions sur l'état
 
 | Fonction | Rôle |
 | --- | --- |
 | `recalculerClasse(s)` | recalcule la catégorie sociale (journalise le changement) |
-| `changerLogement(s, id)` / `forcerLogement(s, id)` / `conditionsLogement(s, id)` | logement |
+| `changerLogement(s, id)` / `forcerLogement(s, id)` / `conditionsLogement(s, id)` → `{ ok, raisons, depot, distance }` | logement |
 | `postuler(s, id)` / `embaucher(s, metier, salaire?)` / `perdreEmploi(s, raison)` / `prerequisMetier(s, m)` / `chanceEmbauche(s, m)` | emploi |
 | `commencerFormation(s, id)` / `arreterFormation(s)` / `prerequisFormation(s, f)` | formations |
 | `etudier(s, competence)` | séance d'étude |

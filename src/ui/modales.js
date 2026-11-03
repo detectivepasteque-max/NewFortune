@@ -26,6 +26,8 @@
     }
     if (b.textes.length) h += '<div class="bilan-textes">' + b.textes.map(function (t) { return '<div>' + esc(t) + '</div>'; }).join('') + '</div>';
     h += UI.deltasHtml(b.deltas);
+    /* deux premiers bilans : dire au débutant comment tenir un mois */
+    if (s.temps.moisAbsolu <= 1) h += '<div class="conseil">' + NF.t('💡 Le mois prochain : mangez, reposez-vous, lavez-vous, puis travaillez. Les jauges s\'usent à la fin de chaque mois, et finir un mois exténué coûte un point d\'action.') + '</div>';
     h += '<div class="modale-pied">' + UI.btn('bilan-ok', null, NF.t('Continuer ▸'), 'btn-principal') + '</div></div>';
     return h;
   };

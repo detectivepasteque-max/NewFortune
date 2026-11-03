@@ -195,8 +195,15 @@ label { display: block; font-size: .86rem; color: var(--texte-2); margin-bottom:
 .grille-cartes .carte { margin-bottom: 0; display: flex; flex-direction: column; }
 .grille-cartes .carte .carte-pied { margin-top: auto; }
 
-.resultat-action { background: #1c2a1f; border: 1px solid #2a4a33; border-radius: 10px; padding: .7rem .9rem; margin-bottom: .8rem; animation: apparait .25s ease-out; }
+/* Résultat de la dernière action : emplacement de hauteur fixe, pour que la grille ne descende
+   pas quand le bandeau apparaît ou change de longueur (un texte long défile dans le bandeau). */
+.resultat-slot { height: 5rem; margin-bottom: .8rem; }
+.resultat-action { background: #1c2a1f; border: 1px solid #2a4a33; border-radius: 10px; padding: .6rem .9rem; height: 100%; box-sizing: border-box; overflow-y: auto; font-size: .92rem; animation: apparait .25s ease-out; }
 .resultat-action.echec { background: #2d1e1e; border-color: #5a2a2a; }
+.resultat-vide { height: 100%; box-sizing: border-box; display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; padding: .6rem .9rem; border: 1px dashed var(--bord); border-radius: 10px; color: var(--texte-2); font-size: .85rem; }
+.etiquette.cout { background: #2d1e1e; color: #ff9b9b; border-color: #5a2a2a; }
+.conseil { background: #2a2614; border: 1px solid #5a4a1c; color: var(--accent-2); border-radius: 8px; padding: .6rem .8rem; margin: .8rem 0; font-size: .92rem; }
+.avert { color: #ffcc66; }
 @keyframes apparait { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* Colonne droite */

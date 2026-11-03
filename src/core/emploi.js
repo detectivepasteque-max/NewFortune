@@ -137,8 +137,8 @@
     /* expérience et xp */
     s.joueur.experience[m.secteur] = (s.joueur.experience[m.secteur] || 0) + 1;
     if (m.xp) for (var k in m.xp) NF.api.ajouterXp(s, k, m.xp[k] * C.efficacite(s));
-    /* pénibilité : un vrai lit le soir change tout (×0.7 quand on est logé) */
-    var pen = (m.penibilite || 10) * (cfg.penibiliteMultiplicateur || 1) * (C.logementActuel(s).expose ? 1 : 0.7);
+    /* pénibilité (C.penibiliteMensuelle, economie.js : ×0.7 quand on est logé) */
+    var pen = C.penibiliteMensuelle(s, m);
     NF.api.modifierJauge(s, 'energie', -pen);
     if (m.penibilite >= 20) NF.api.modifierJauge(s, 'moral', -2);
     /* accident */

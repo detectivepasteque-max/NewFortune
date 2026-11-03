@@ -165,38 +165,57 @@
   };
 
   /* ----- Usure des jauges, saison, santé ----- */
-  C.moisJauges = function (s, bilan) {
+  /** Énergie que l'emploi `m` prend chaque mois : un vrai lit le soir change tout (×0.7 quand on est logé) */
+  C.penibiliteMensuelle = function (s, m) {
+    return (m.penibilite || 10) * (cfg().penibiliteMultiplicateur || 1) * (C.logementActuel(s).expose ? 1 : 0.7);
+  };
+
+  /** Variations attendues en fin de mois (négatif = perte) selon le logement, la saison, les
+   *  objets, les traits et la famille ; `travail` : énergie que prendra l'emploi (moisEmploi).
+   *  Sert à moisJauges et à l'affichage : le joueur voit venir l'usure avant de terminer le mois. */
+  C.usurePrevue = function (s) {
     var j = s.joueur, cf = cfg(), l = C.logementActuel(s), saison = C.saison(s);
     var us = l.usure || {};
-    var deltaN = -cf.usure.nourriture * (us.nourriture != null ? us.nourriture : 1) * NF.api.passif(s, 'usureNourriture');
-    var deltaE = -cf.usure.energie * (us.energie != null ? us.energie : 1) * NF.api.passif(s, 'usureEnergie') * C.modifTrait(s, 'usureEnergie');
-    var deltaH = -cf.usure.hygiene * (us.hygiene != null ? us.hygiene : 1) * NF.api.passif(s, 'usureHygiene');
-    var deltaM = -cf.usure.moral * (us.moral != null ? us.moral : 1) * NF.api.passif(s, 'usureMoral') * C.modifTrait(s, 'usureMoral')
-      * (1 - 0.06 * C.niveauCompetence(s, 'meditation'));   // méditation : le moral s'use moins vite
+    var u = {
+      nourriture: -cf.usure.nourriture * (us.nourriture != null ? us.nourriture : 1) * NF.api.passif(s, 'usureNourriture'),
+      energie: -cf.usure.energie * (us.energie != null ? us.energie : 1) * NF.api.passif(s, 'usureEnergie') * C.modifTrait(s, 'usureEnergie'),
+      hygiene: -cf.usure.hygiene * (us.hygiene != null ? us.hygiene : 1) * NF.api.passif(s, 'usureHygiene'),
+      moral: -cf.usure.moral * (us.moral != null ? us.moral : 1) * NF.api.passif(s, 'usureMoral') * C.modifTrait(s, 'usureMoral')
+        * (1 - 0.06 * C.niveauCompetence(s, 'meditation')),   // méditation : le moral s'use moins vite
+      sante: 0, travail: 0, froid: 1,
+    };
     /* saison en extérieur */
     var sa = cf.saisons[saison];
-    var deltaS = 0;
     if (l.expose) {
-      var froid = NF.api.passif(s, 'froid');
-      deltaS -= sa.santeRue * froid;
-      deltaM -= sa.moralRue;
-      deltaE -= sa.energieRue * froid;
-      if (saison === 'hiver' && sa.santeRue * froid >= 4) bilan.textes.push(NF.t('❄️ Le froid vous use (') + (froid < 1 ? NF.t('votre équipement aide') : NF.t('rien pour vous protéger')) + ').');
+      u.froid = NF.api.passif(s, 'froid');
+      u.sante -= sa.santeRue * u.froid;
+      u.moral -= sa.moralRue;
+      u.energie -= sa.energieRue * u.froid;
     } else if (saison === 'ete') {
-      deltaM += 2;
+      u.moral += 2;
     }
     /* un vrai lit : on récupère un peu chaque mois */
-    if (!l.expose) deltaE += cf.recuperationEnergieLoge || 0;
+    if (!l.expose) u.energie += cf.recuperationEnergieLoge || 0;
     /* récupération naturelle du moral quand le corps va bien */
-    if (j.jauges.nourriture >= 40 && j.jauges.energie >= 40) deltaM += cf.recuperationMoral || 0;
+    if (j.jauges.nourriture >= 40 && j.jauges.energie >= 40) u.moral += cf.recuperationMoral || 0;
     /* famille : le moral tient mieux avec une bonne relation */
-    if (j.famille.partenaire && j.famille.partenaire.relation >= 60) deltaM += 3;
-    if (j.famille.partenaire && j.famille.partenaire.relation < 30) deltaM -= 3;
-    NF.api.modifierJauge(s, 'nourriture', deltaN);
-    NF.api.modifierJauge(s, 'energie', deltaE);
-    NF.api.modifierJauge(s, 'hygiene', deltaH);
-    NF.api.modifierJauge(s, 'moral', deltaM);
-    NF.api.modifierJauge(s, 'sante', deltaS);
+    if (j.famille.partenaire && j.famille.partenaire.relation >= 60) u.moral += 3;
+    if (j.famille.partenaire && j.famille.partenaire.relation < 30) u.moral -= 3;
+    var m = C.metierActuel(s);
+    if (m) u.travail = -C.penibiliteMensuelle(s, m);
+    return u;
+  };
+
+  C.moisJauges = function (s, bilan) {
+    var u = C.usurePrevue(s), cf = cfg();
+    if (C.logementActuel(s).expose && C.saison(s) === 'hiver' && cf.saisons.hiver.santeRue * u.froid >= 4) {
+      bilan.textes.push(NF.t('❄️ Le froid vous use (') + (u.froid < 1 ? NF.t('votre équipement aide') : NF.t('rien pour vous protéger')) + ').');
+    }
+    NF.api.modifierJauge(s, 'nourriture', u.nourriture);
+    NF.api.modifierJauge(s, 'energie', u.energie);
+    NF.api.modifierJauge(s, 'hygiene', u.hygiene);
+    NF.api.modifierJauge(s, 'moral', u.moral);
+    NF.api.modifierJauge(s, 'sante', u.sante);
   };
 
   C.moisSante = function (s, bilan) {

@@ -26,6 +26,13 @@ paie ; une entreprise compte double), `lieu`, `objet`, `drapeau`,
 `armee`, attribuée automatiquement à l'embauche et quittée dès que l'on ne sert
 plus). Le logement doit aussi avoir la `capacite` pour la famille.
 
+L'onglet Logement affiche une « prochaine étape » (`NF.core.prochainLogement`) :
+le logement accessible le moins élevé au-dessus de l'actuel, sinon le plus
+proche selon la `distance` que renvoie `conditionsLogement` (argent et revenus
+manquants ÷ 300, réputation manquante ÷ 5, domiciliation 1, mois d'emploi 2,
+interdiction de foyer 3, objet 5, proposition d'hébergement 6 ; lieu absent,
+secteur d'emploi et famille trop grande rendent le logement inatteignable).
+
 Déménager coûte 1 PA. Quitter un bien possédé le vend à 90 % du prix.
 Deux loyers impayés déclenchent l'événement `expulsion_loyer`. À la fin de
 `dureeMax`, retour à la rue (le foyer devient interdit quelques mois).

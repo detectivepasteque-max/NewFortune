@@ -78,6 +78,10 @@
       if (j.drapeaux.demarches_succession > 0) raisons.push(NF.t('succession'));
       if (raisons.length) h += NF.t('<p class="tres-petit muted">Moins de PA : ') + raisons.join(', ') + '.</p>';
     }
+    /* prévenir avant de terminer le mois exténué (−1 PA le mois suivant) */
+    var u = C.usurePrevue(s), seuilEnergie = NF.data.config.paMalusEnergie;
+    if (j.jauges.energie < seuilEnergie) h += '<p class="tres-petit avert">' + NF.t('⚠️ Exténué : 1 PA de moins le mois prochain. Reposez-vous avant de terminer le mois.') + '</p>';
+    else if (j.jauges.energie + u.energie + u.travail < seuilEnergie) h += '<p class="tres-petit avert">' + NF.t('⚠️ Avec l\'usure du mois, vous finirez exténué : 1 PA de moins le mois prochain. Reposez-vous avant de terminer le mois.') + '</p>';
     h += UI.btn('fin-mois', null, s.pa > 0 ? NF.t('⏭ Terminer le mois (') + s.pa + NF.t(' PA restants)') : NF.t('⏭ Terminer le mois'), 'btn-principal btn-bloc');
     h += '</div>';
 

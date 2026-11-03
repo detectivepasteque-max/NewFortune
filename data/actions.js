@@ -37,6 +37,7 @@
     /* ======================= SURVIE ======================= */
     { id: 'mendier', nom: NF.t('Faire la manche'), icone: '🥣', categorie: 'survie',
       desc: NF.t('Tendre la main dans la rue ou à la sortie du métro.'),
+      cout: { energie: 2, moral: 2 },
       conditions: { logementOrdreMax: 3 },
       info: function (s) { return A.aObjet(s, 'panneau') ? NF.t('Votre panneau attire l\'œil.') : NF.t('Un panneau rendrait cela plus efficace.'); },
       effet: function (s) {
@@ -60,6 +61,7 @@
 
     { id: 'chercher_nourriture', nom: NF.t('Chercher de la nourriture'), icone: '🍞', categorie: 'survie',
       desc: NF.t('Invendus du marché, fin de service des restaurants, distributions.'),
+      cout: { hygiene: 3 },
       conditions: { logementOrdreMax: 3 },
       effet: function (s) {
         var base = r().entre(30, 52) * A.passif(s, 'fouille') * C.modifTrait(s, 'fouille');
@@ -78,6 +80,7 @@
 
     { id: 'fouiller', nom: NF.t('Fouiller les bennes'), icone: '🗑️', categorie: 'survie',
       desc: NF.t('Cartons, ficelle, ferraille, bouteilles : de quoi fabriquer.'),
+      cout: { energie: 3, hygiene: 5 },
       conditions: { logementOrdreMax: 4 },
       info: function (s) { return NF.t('Place libre : ') + A.placeLibre(s) + '/' + A.capaciteInventaire(s) + '.'; },
       effet: function (s) {
@@ -100,6 +103,7 @@
 
     { id: 'fouiller_poubelles', nom: NF.t('Fouiller les poubelles'), icone: '🚮', categorie: 'survie',
       desc: NF.t('Les poubelles des immeubles et des commerces : restes encore bons, pièces oubliées, petits objets.'),
+      cout: { hygiene: 7, moral: 2 },
       conditions: { logementOrdreMax: 3 },
       effet: function (s) {
         var m = A.passif(s, 'fouille') * C.modifTrait(s, 'fouille');
@@ -120,6 +124,7 @@
 
     { id: 'petit_boulot', nom: NF.t('Petits boulots'), icone: '🧹', categorie: 'survie',
       desc: NF.t('Porter des cartons, laver des vitres, aider sur un marché. Payé de la main à la main.'),
+      cout: { energie: 10, hygiene: 4 },
       conditions: { jauges: { energie: { min: 10 } } },
       effet: function (s) {
         var gain = r().entre(45, 110) * C.efficacite(s) * (1 + 0.12 * C.niveauCompetence(s, 'bricolage')) * (0.7 + 0.3 * s.conjoncture);
@@ -216,6 +221,7 @@
 
     { id: 'sport', nom: NF.t('Marcher, courir, respirer'), icone: '🏃', categorie: 'soin',
       desc: NF.t('Le parc, les quais, n\'importe où. Bon pour la tête et le corps.'),
+      cout: { energie: 4, nourriture: 3 },
       effet: function (s) {
         A.modifierJauge(s, 'sante', 3 + (C.aLieu(s, 'parc') ? 2 : 0) + C.niveauCompetence(s, 'sport'));
         A.modifierJauge(s, 'moral', 9);
@@ -228,6 +234,7 @@
     /* ======================= SOCIAL ET ADMINISTRATIF ======================= */
     { id: 'demarches', nom: NF.t('Démarches administratives'), icone: '📄', categorie: 'social',
       desc: NF.t('Domiciliation, aides, papiers. Lent, mais indispensable.'),
+      cout: { moral: 2 },
       info: function (s) {
         if (s.joueur.drapeaux.papiers_perdus) return NF.t('Objectif : refaire vos papiers.');
         if (!s.joueur.domiciliation) return NF.t('Objectif : obtenir une domiciliation (adresse administrative).');
@@ -276,6 +283,7 @@
 
     { id: 'heures_sup', nom: NF.t('Heures supplémentaires'), icone: '⏱️', categorie: 'travail',
       desc: NF.t('Travailler davantage pour gagner un quart de salaire en plus.'),
+      cout: { energie: 15, moral: 4 },
       conditions: { emploi: true },
       condition: function (s) { var m = C.metierActuel(s); return m && m.pa >= 1; },
       effet: function (s) {
@@ -342,6 +350,7 @@
 
     { id: 'spectacle_rue', nom: NF.t('Spectacle de rue'), icone: '🎪', categorie: 'loisirs',
       desc: NF.t('Musique, jonglage, danse, magie ou théâtre : un chapeau au sol, et le public décide. Votre meilleur talent est utilisé.'),
+      cout: { energie: 6 },
       condition: function (s) { return talentRue(s).niveau >= 1; },
       info: function (s) {
         var t = talentRue(s);
@@ -374,6 +383,7 @@
 
     { id: 'pecher', nom: NF.t('Pêcher'), icone: '🎣', categorie: 'loisirs',
       desc: NF.t('L\'étang du parc, le canal, les quais. Du calme, et parfois du poisson.'),
+      cout: { energie: 3 },
       info: function (s) { return A.aObjet(s, 'canne_a_peche') ? NF.t('Avec votre canne, les prises sont bien meilleures.') : NF.t('Sans canne à pêche, une ligne de fortune : prises modestes.'); },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'peche');
@@ -394,6 +404,7 @@
 
     { id: 'cueillir', nom: NF.t('Cueillette'), icone: '🍄', categorie: 'loisirs',
       desc: NF.t('Champignons, mûres, châtaignes, plantes sauvages dans le parc et les friches. Selon la saison.'),
+      cout: { energie: 4, hygiene: 3 },
       conditions: { lieu: 'parc' },
       info: function (s) { var sa = C.saison(s); return sa === 'hiver' ? NF.t('En hiver, il n\'y a presque rien.') : sa === 'automne' ? NF.t('L\'automne : la meilleure saison.') : ''; },
       effet: function (s) {
@@ -415,6 +426,7 @@
 
     { id: 'jardiner', nom: NF.t('Jardiner'), icone: '🌱', categorie: 'loisirs',
       desc: NF.t('Une parcelle au jardin partagé du parc, ou quelques pots chez soi. Des légumes au fil des saisons.'),
+      cout: { energie: 6, hygiene: 4 },
       condition: function (s) { return C.aLieu(s, 'parc') || !C.logementActuel(s).expose; },
       info: function (s) { return C.aLieu(s, 'parc') ? NF.t('Jardin partagé du parc.') : (!C.logementActuel(s).expose ? NF.t('Quelques pots sur le rebord de la fenêtre.') : NF.t('Il faut un jardin partagé (parc) ou un vrai logement.')); },
       effet: function (s) {
@@ -435,6 +447,7 @@
 
     { id: 'dessiner', nom: NF.t('Dessiner et vendre des portraits'), icone: '🎨', categorie: 'loisirs',
       desc: NF.t('Croquer les passants, vendre ses dessins sur un bout de trottoir.'),
+      cout: { energie: 3 },
       conditions: { competences: { dessin: 1 } },
       info: function (s) { return A.aObjet(s, 'carnet_dessin') ? NF.t('Votre carnet et vos crayons font la différence.') : NF.t('Un carnet et des crayons aideraient.'); },
       effet: function (s) {
@@ -455,6 +468,7 @@
 
     { id: 'ecrire', nom: NF.t('Écrire'), icone: '✍️', categorie: 'loisirs',
       desc: NF.t('Un carnet, un stylo, un banc. Poèmes, souvenirs, nouvelles. Avec du niveau, des textes se vendent.'),
+      cout: { energie: 2 },
       conditions: { competences: { lecture: 1 } },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'ecriture');
@@ -468,6 +482,7 @@
 
     { id: 'photographier', nom: NF.t('Photographier la ville'), icone: '📷', categorie: 'loisirs',
       desc: NF.t('Les quais à l\'aube, les visages du marché. Avec du niveau, des clichés se vendent.'),
+      cout: { energie: 4 },
       conditions: { telephone: true },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'photographie');
@@ -480,6 +495,7 @@
 
     { id: 'coudre', nom: NF.t('Coudre et raccommoder'), icone: '🧵', categorie: 'loisirs',
       desc: NF.t('Recoudre ses vêtements, puis faire des retouches pour les autres.'),
+      cout: { energie: 2 },
       info: function (s) { return A.aObjet(s, 'necessaire_couture') ? NF.t('Avec votre nécessaire de couture, le travail est propre.') : NF.t('Un nécessaire de couture rendrait cela plus efficace.'); },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'couture');
@@ -494,6 +510,7 @@
 
     { id: 'garder_animaux', nom: NF.t('Promener et garder des animaux'), icone: '🐕', categorie: 'loisirs',
       desc: NF.t('Les chiens du quartier, le chat d\'une voisine en vacances. Payé de la main à la main.'),
+      cout: { energie: 5, hygiene: 3 },
       conditions: { reputationMin: 10 },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'animaux');
@@ -510,6 +527,7 @@
 
     { id: 'coiffer', nom: NF.t('Coiffer'), icone: '💇', categorie: 'loisirs',
       desc: NF.t('Se couper les cheveux proprement. Avec du niveau, coiffer les autres contre quelques pièces.'),
+      cout: { energie: 2 },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'coiffure');
         A.modifierJauge(s, 'hygiene', 8 + niv);
@@ -522,6 +540,7 @@
 
     { id: 'jouer_echecs', nom: NF.t('Jouer aux échecs au parc'), icone: '♟️', categorie: 'loisirs',
       desc: NF.t('Les tables du parc, les habitués, de petites mises. On apprend en perdant.'),
+      cout: { energie: 2 },
       conditions: { lieu: 'parc' },
       info: function (s) { return s.joueur.argent >= 5 ? NF.t('Les parties se jouent avec une petite mise.') : NF.t('Sans argent, vous jouez pour l\'honneur.'); },
       effet: function (s) {
@@ -550,6 +569,7 @@
 
     { id: 'quiz', nom: NF.t('Soirée quiz'), icone: '🏛️', categorie: 'loisirs',
       desc: NF.t('Les quiz des bars et de la bibliothèque. Des lots pour les meilleurs, des rencontres pour tous.'),
+      cout: { energie: 2 },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'culture');
         A.modifierJauge(s, 'moral', 4);

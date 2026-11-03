@@ -21,10 +21,14 @@
     }
   };
 
-  UI.resultatHtml = function (vue) {
-    var r = vue.dernierResultat;
-    if (!r) return '';
-    return '<div class="resultat-action' + (r.ok ? '' : ' echec') + '"><strong>' + esc(r.nom || '') + '</strong>' + (r.nom ? ' — ' : '') + esc(r.texte) + UI.deltasHtml(r.deltas) + '</div>';
+  /** Emplacement de hauteur fixe en haut de l'onglet : le résultat de la dernière action, sinon
+   *  un conseil (deux premiers mois) ou l'usure prévue en fin de mois. La grille ne bouge jamais. */
+  UI.resultatHtml = function (s, vue) {
+    var r = vue.dernierResultat, h;
+    if (r) h = '<div class="resultat-action' + (r.ok ? '' : ' echec') + '"><strong>' + esc(r.nom || '') + '</strong>' + (r.nom ? ' — ' : '') + esc(r.texte) + UI.deltasHtml(r.deltas) + '</div>';
+    else if (s.temps.moisAbsolu <= 1) h = '<div class="resultat-vide">' + NF.t('💡 Chaque mois : manger, se reposer, se laver, puis travailler. Les jauges s\'usent à la fin du mois.') + '</div>';
+    else h = '<div class="resultat-vide">' + NF.t('Usure prévue en fin de mois : ') + UI.usureHtml(C.usurePrevue(s)) + '</div>';
+    return '<div class="resultat-slot">' + h + '</div>';
   };
 
   /* ================= ACTIONS ================= */
@@ -34,7 +38,7 @@
   ];
 
   UI.ongletActions = function (s, vue) {
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     var cat = vue.categorie || 'survie';
     h += '<div class="chips">' + CATEGORIES.map(function (c) {
       var visibles = NF.data.actions.filter(function (a) { return a.categorie === c.id && (!a.visible || a.visible(s)); }).length;
@@ -50,7 +54,7 @@
       if (v.ok && typeof a.condition === 'function' && !a.condition(s)) { v.ok = false; v.raisons.push(NF.t('indisponible')); }
       var possible = v.ok && s.pa >= pa;
       var info = a.info ? a.info(s) : '';
-      h += '<div class="carte' + (possible ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + a.icone + '</span><strong>' + esc(a.nom) + '</strong>' + UI.etiquettePa(pa) + '</div>';
+      h += '<div class="carte' + (possible ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + a.icone + '</span><strong>' + esc(a.nom) + '</strong>' + UI.etiquettePa(pa) + UI.coutHtml(a.cout) + '</div>';
       h += '<div class="carte-desc">' + esc(a.desc) + (info ? '<br><span class="tres-petit accent">' + esc(info) + '</span>' : '') + '</div>';
       if (!v.ok) h += '<div class="raisons">' + esc(v.raisons.join(', ')) + '</div>';
       h += '<div class="carte-pied">' + UI.btn('action', a.id, NF.t('Faire'), 'btn-petit btn-principal', !possible) + '</div></div>';
@@ -62,7 +66,7 @@
   /* ================= EMPLOI ================= */
   UI.ongletEmploi = function (s, vue) {
     var j = s.joueur, m = C.metierActuel(s);
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     h += NF.t('<h2>Emploi</h2>');
     if (m) {
       h += '<div class="carte selectionnee"><div class="carte-titre"><span class="carte-icone">' + m.icone + '</span><strong>' + esc(m.nom) + NF.t('</strong><span class="etiquette bleu">niveau ') + m.niveau + '</span>' + (m.nonDeclare ? NF.t('<span class="etiquette mauvais">non déclaré</span>') : '') + '</div>';
@@ -127,14 +131,17 @@
 
   /* ================= LOGEMENT ================= */
   UI.ongletLogement = function (s, vue) {
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     var actuel = C.logementActuel(s);
     h += NF.t('<h2>Logement</h2><p class="muted petit">Déménager coûte 1 PA. Le logement détermine le loyer, l\'usure des jauges, l\'adresse et la catégorie sociale. Revenus estimés : <strong>') + U.euros(C.revenuMensuel(s)) + NF.t('/mois</strong>.</p>');
+    /* guider le débutant : le logement à viser et ce qui manque */
+    var prochain = C.prochainLogement(s);
+    if (prochain) h += '<div class="conseil">' + (prochain.v.ok ? NF.t('🎯 Vous pouvez emménager dès maintenant : ') : NF.t('🎯 Prochaine étape : ')) + prochain.l.icone + ' ' + esc(prochain.l.nom) + (prochain.v.ok ? '' : ' — ' + esc(prochain.v.raisons.join(', '))) + '.</div>';
     h += '<div class="grille-cartes">';
     NF.data.logements.forEach(function (l) {
       var cond = C.conditionsLogement(s, l.id);
       var cur = l.id === actuel.id;
-      h += '<div class="carte' + (cur ? ' selectionnee' : cond.ok ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + l.icone + '</span><strong>' + esc(l.nom) + '</strong>' + (cur ? NF.t('<span class="etiquette bon">actuel</span>') : '') + (l.adresse ? NF.t('<span class="etiquette bleu">adresse</span>') : '') + '</div>';
+      h += '<div class="carte' + (cur ? ' selectionnee' : cond.ok ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + l.icone + '</span><strong>' + esc(l.nom) + '</strong>' + (cur ? NF.t('<span class="etiquette bon">actuel</span>') : '') + (prochain && prochain.l.id === l.id ? NF.t('<span class="etiquette violet">prochaine étape</span>') : '') + (l.adresse ? NF.t('<span class="etiquette bleu">adresse</span>') : '') + '</div>';
       h += '<div class="carte-desc">' + esc(l.desc) + '<br><span class="tres-petit">' + (l.proprietaire ? NF.t('Achat ') + U.euros(l.prix) + NF.t(' · charges ') + U.euros(l.charges) + NF.t('/mois') : l.loyer ? NF.t('Loyer ') + U.euros(l.loyer) + NF.t(' + charges ') + U.euros(l.charges) + NF.t('/mois') : NF.t('Gratuit') + (l.charges ? NF.t(' (participation ') + U.euros(l.charges) + ')' : '')) + (l.dureeMax ? ' · ' + l.dureeMax + NF.t(' mois max') : '') + (l.cuisine ? NF.t(' · cuisine') : '') + (l.expose ? NF.t(' · exposé aux intempéries') : '') + ' · ' + l.capacite + NF.t(' pers.</span></div>');
       if (!cur && !cond.ok) h += '<div class="raisons">' + esc(cond.raisons.join(', ')) + '</div>';
       if (!cur) h += '<div class="carte-pied">' + UI.btn('demenager', l.id, l.proprietaire ? NF.t('Acheter') : NF.t('Emménager'), 'btn-petit btn-principal', !cond.ok || s.pa < 1) + UI.etiquettePa(1) + '</div>';
@@ -146,7 +153,7 @@
 
   /* ================= SAVOIR ================= */
   UI.ongletSavoir = function (s, vue) {
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     h += NF.t('<h2>Compétences</h2><p class="muted petit">Étudier coûte 1 PA (et parfois un peu d\'argent). Les métiers exercés font aussi progresser. Efficacité actuelle : ') + Math.round(C.efficacite(s) * C.modifTrait(s, 'apprentissage') * A.passif(s, 'apprentissage') * 100) + ' %.</p>';
     var ligneComp = function (c) {
       var xp = s.joueur.competences[c.id] || 0, niv = C.niveauCompetence(s, c.id), parNiv = NF.data.config.xpParNiveau;
@@ -172,7 +179,7 @@
   /* ================= OBJETS ================= */
   UI.ongletObjets = function (s, vue) {
     var j = s.joueur;
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     h += NF.t('<div class="ligne"><h2 style="margin:0">Inventaire</h2><div class="espace"></div><span class="etiquette">') + A.placeUtilisee(s) + ' / ' + A.capaciteInventaire(s) + NF.t(' places</span></div>');
     var ids = Object.keys(j.inventaire);
     if (!ids.length) h += NF.t('<p class="muted">Votre sac est vide. Fouillez les bennes (onglet Actions) pour trouver des matériaux.</p>');
@@ -217,7 +224,7 @@
   /* ================= FAMILLE ================= */
   UI.ongletFamille = function (s, vue) {
     var f = s.joueur.famille;
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     h += NF.t('<h2>Famille</h2>');
     if (!f.partenaire && !f.enfants.length) {
       h += NF.t('<p class="muted">Vous êtes seul. Les rencontres (événements, action « Nouer des contacts ») peuvent mener à une relation, puis à une famille. Fonder une famille demande un minimum de stabilité.</p>');
@@ -249,7 +256,7 @@
   /* ================= ENTREPRISE ================= */
   UI.ongletEntreprise = function (s, vue) {
     var e = s.joueur.entreprise, E = NF.data.entreprise;
-    var h = UI.resultatHtml(vue);
+    var h = UI.resultatHtml(s, vue);
     h += NF.t('<h2>Entreprise</h2>');
     if (!e) {
       var possibles = C.secteursPossibles(s);
