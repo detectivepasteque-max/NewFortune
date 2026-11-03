@@ -108,4 +108,6 @@ ajoutez, ou ajouter une langue : `docs/12-langues.md` et `python outils/i18n.py`
 
 ## Licence
 
-Faites-en ce que vous voulez. Les textes et le code sont livrés sans garantie.
+Licence MIT (fichier `LICENSE`) : utilisez, modifiez, redistribuez le jeu,
+le code et les textes librement, y compris dans un projet commercial, en
+conservant la mention de licence. Le tout est livré sans garantie.
