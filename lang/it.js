@@ -2141,6 +2141,7 @@ NF.i18n.dictionnaires.it = {
   "Claude": "Claude",
   "Yaël": "Yaël",
   "Votre rencontre": "Il tuo incontro",
+  "Vous quittez votre poste de ": "Lasci il tuo posto di ",
   "Vous commencez comme ": "Cominci come ",
   "La maraude": "L'unità di strada",
   "Un soir, une camionnette s'arrête à votre hauteur. Deux bénévoles en descendent avec des thermos et des couvertures. « Vous voulez un café ? »": "Una sera, un furgone si ferma alla tua altezza. Due volontari ne scendono con dei thermos e delle coperte. \"Vuole un caffè?\"",

@@ -2141,6 +2141,7 @@ NF.i18n.dictionnaires.de = {
   "Claude": "Claude",
   "Yaël": "Yaël",
   "Votre rencontre": "Ihre Begegnung",
+  "Vous quittez votre poste de ": "Du kündigst deine Stelle als ",
   "Vous commencez comme ": "Ihr Ausgangspunkt: ",
   "La maraude": "Die Straßenhilfe",
   "Un soir, une camionnette s'arrête à votre hauteur. Deux bénévoles en descendent avec des thermos et des couvertures. « Vous voulez un café ? »": "Eines Abends hält ein Kleintransporter neben Ihnen. Zwei Freiwillige steigen mit Thermoskannen und Decken aus. „Möchten Sie einen Kaffee?“",

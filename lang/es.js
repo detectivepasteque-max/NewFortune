@@ -2141,6 +2141,7 @@ NF.i18n.dictionnaires.es = {
   "Claude": "Claude",
   "Yaël": "Yaël",
   "Votre rencontre": "Tu encuentro",
+  "Vous quittez votre poste de ": "Dejas tu puesto de ",
   "Vous commencez comme ": "Empiezas como ",
   "La maraude": "La ronda nocturna",
   "Un soir, une camionnette s'arrête à votre hauteur. Deux bénévoles en descendent avec des thermos et des couvertures. « Vous voulez un café ? »": "Una noche, una furgoneta se detiene a tu altura. Dos voluntarios bajan con termos y mantas. «¿Quiere un café?»",

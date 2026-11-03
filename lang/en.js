@@ -2141,6 +2141,7 @@ NF.i18n.dictionnaires.en = {
   "Claude": "Claude",
   "Yaël": "Yaël",
   "Votre rencontre": "Your encounter",
+  "Vous quittez votre poste de ": "You leave your job as ",
   "Vous commencez comme ": "You start out as ",
   "La maraude": "The outreach van",
   "Un soir, une camionnette s'arrête à votre hauteur. Deux bénévoles en descendent avec des thermos et des couvertures. « Vous voulez un café ? »": "One evening, a van pulls up beside you. Two volunteers get out with thermos flasks and blankets. \"Would you like a coffee?\"",

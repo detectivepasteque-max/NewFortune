@@ -50,7 +50,7 @@ données (événements, actions, bonus) ; `NF.core` contient les règles.
 | --- | --- |
 | `recalculerClasse(s)` | recalcule la catégorie sociale (journalise le changement) |
 | `changerLogement(s, id)` / `forcerLogement(s, id)` / `conditionsLogement(s, id)` | logement |
-| `postuler(s, id)` / `embaucher(s, metier)` / `perdreEmploi(s, raison)` / `prerequisMetier(s, m)` / `chanceEmbauche(s, m)` | emploi |
+| `postuler(s, id)` / `embaucher(s, metier, salaire?)` / `perdreEmploi(s, raison)` / `prerequisMetier(s, m)` / `chanceEmbauche(s, m)` | emploi |
 | `commencerFormation(s, id)` / `arreterFormation(s)` / `prerequisFormation(s, f)` | formations |
 | `etudier(s, competence)` | séance d'étude |
 | `fabriquer(s, recette)` / `verifierRecette(s, r)` / `utiliserObjet` / `vendreObjet` / `jeterObjet` / `acheterObjet` / `prixAchat` | objets |

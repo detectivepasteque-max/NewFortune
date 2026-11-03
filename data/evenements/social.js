@@ -12,7 +12,7 @@
  *   hebergement_propose   → débloque le logement « Hébergé chez quelqu'un »
  *   reseau_entraide, mentor, camarade_contact, contact_association
  *   article_en_cours, article_visage → chaîne du journaliste
- *   tuyau_resultat, article_issue → temporaires (effacés dans `resultat`)
+ *   tuyau_resultat, tuyau_ancien, article_issue → temporaires (effacés dans `resultat`)
  * ===================================================================== */
 (function () {
   var PRENOMS_RENCONTRE = [NF.t('Camille'), NF.t('Sacha'), NF.t('Charlie'), NF.t('Alix'), NF.t('Lou'), NF.t('Dominique'), NF.t('Andrea'), NF.t('Noa'), NF.t('Eden'), NF.t('Morgan'), NF.t('Claude'), NF.t('Yaël')];
@@ -26,34 +26,45 @@
 
   function pageTournee(s) { return !s.joueur.drapeaux.relation_en_cours || !!s.joueur.famille.partenaire; }
 
-  /** Un métier accessible (prérequis remplis) de niveau <= niveauMax, meilleur que l'actuel */
+  /** Un métier accessible (prérequis remplis) de niveau <= niveauMax et vraiment meilleur
+   *  que l'actuel : milieu de fourchette au-dessus du salaire en cours, et jamais un poste
+   *  non déclaré quand l'actuel est déclaré. Un tuyau ne fait pas régresser. */
   function metierParRelation(s, niveauMax) {
     var actuel = NF.core.metierActuel(s);
+    var salaire = actuel ? s.joueur.emploi.salaire : 0;
     var cands = NF.data.metiers.filter(function (m) {
       if (m.niveau > niveauMax) return false;
       if (actuel && m.id === actuel.id) return false;
       if (!NF.core.prerequisMetier(s, m).ok) return false;
-      if (actuel && m.salaire[1] <= s.joueur.emploi.salaire) return false;
+      if (actuel && (m.salaire[0] + m.salaire[1]) / 2 <= salaire) return false;
+      if (actuel && !actuel.nonDeclare && m.nonDeclare) return false;
       return true;
     });
     return cands.length ? NF.rng.pick(cands) : null;
   }
 
-  /** Embauche par relation ; mémorise le résultat pour le texte de `resultat` */
+  /** Embauche par relation ; mémorise le résultat et l'ancien poste pour le texte de `resultat`.
+   *  Le salaire vaut au moins l'ancien + 5 % : on ne quitte pas un emploi pour perdre de l'argent. */
   function embaucheParRelation(s, niveauMax, bonusSalaire) {
+    var ancien = NF.core.metierActuel(s), ancienSalaire = ancien ? s.joueur.emploi.salaire : 0;
     var m = metierParRelation(s, niveauMax);
     if (!m) { s.joueur.drapeaux.tuyau_resultat = 'rien'; return null; }
-    NF.core.embaucher(s, m);
-    if (bonusSalaire && bonusSalaire !== 1) s.joueur.emploi.salaire = Math.round(s.joueur.emploi.salaire * bonusSalaire / 10) * 10;
+    var salaire = Math.max(NF.core.salaireMetier(s, m) * (bonusSalaire || 1), ancienSalaire * 1.05);
+    NF.core.embaucher(s, m, Math.round(salaire / 10) * 10);
     s.joueur.drapeaux.tuyau_resultat = 'embauche';
+    s.joueur.drapeaux.tuyau_ancien = ancien ? ancien.id : '';
     return m;
   }
 
   function texteTuyau(s, siRien) {
-    var r = s.joueur.drapeaux.tuyau_resultat;
-    delete s.joueur.drapeaux.tuyau_resultat;
+    var d = s.joueur.drapeaux, r = d.tuyau_resultat;
+    var ancien = d.tuyau_ancien ? NF.util.byId(NF.data.metiers, d.tuyau_ancien) : null;
+    delete d.tuyau_resultat; delete d.tuyau_ancien;
     var m = NF.core.metierActuel(s);
-    if (r === 'embauche' && m) return NF.t('Vous commencez comme ') + NF.util.minuscule(m.nom) + ' : ' + NF.util.euros(s.joueur.emploi.salaire) + NF.t(' par mois.');
+    if (r === 'embauche' && m) {
+      return (ancien ? NF.t('Vous quittez votre poste de ') + NF.util.minuscule(ancien.nom) + '. ' : '')
+        + NF.t('Vous commencez comme ') + NF.util.minuscule(m.nom) + ' : ' + NF.util.euros(s.joueur.emploi.salaire) + NF.t(' par mois.');
+    }
     return siRien;
   }
 

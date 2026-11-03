@@ -87,9 +87,10 @@
     return { ok: false, texte: NF.rng.pick(excuses) };
   };
 
-  C.embaucher = function (s, m) {
+  /** Embauche au métier `m` (quitte l'emploi en cours). `salaire` : montant imposé, sinon tiré dans la fourchette. */
+  C.embaucher = function (s, m, salaire) {
     if (s.joueur.emploi) C.perdreEmploi(s, NF.t('démission'), true);
-    s.joueur.emploi = { id: m.id, salaire: C.salaireMetier(s, m), mois: 0, secteur: m.secteur };
+    s.joueur.emploi = { id: m.id, salaire: salaire != null ? salaire : C.salaireMetier(s, m), mois: 0, secteur: m.secteur };
     s.stats.emplois = (s.stats.emplois || 0) + 1;
     if (!m.nonDeclare) NF.api.drapeau(s, 'emploi_declare', true);
     NF.api.journal(s, m.icone + NF.t(' Embauché : ') + m.nom + ' (' + U.euros(s.joueur.emploi.salaire) + NF.t('/mois).'), 'bon');
