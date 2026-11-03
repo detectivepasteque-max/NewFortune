@@ -137,7 +137,11 @@
     } else if (saison === 'automne') {
       for (var j = 0; j < 14; j++) h += '<ellipse class="feuille" cx="' + r.int(0, W) + '" cy="' + r.int(-20, 120) + '" rx="5" ry="3" fill="' + r.pick(['#d9823b', '#c0392b', '#e0b040']) + '" style="animation-duration:' + r.entre(7, 13).toFixed(1) + 's;animation-delay:-' + r.entre(0, 12).toFixed(1) + 's"/>';
     } else if (saison === 'printemps' && r.chance(0.6)) {
-      for (var k = 0; k < 60; k++) h += '<line class="goutte" x1="' + r.int(0, W) + '" y1="' + r.int(-40, 200) + '" x2="' + r.int(0, W) + '" y2="0" stroke="#cfe6ff" stroke-width="1.2" opacity=".5" style="animation-duration:' + r.entre(1.2, 2.2).toFixed(2) + 's;animation-delay:-' + r.entre(0, 2).toFixed(2) + 's" transform="translate(0,0)"/>';
+      /* pluie fine : de courts traits à peine inclinés, qui tombent (animation CSS « pluie ») */
+      for (var k = 0; k < 60; k++) {
+        var gx = r.int(0, W), gy = r.int(-40, 200), gl = r.int(8, 16);
+        h += '<line class="goutte" x1="' + gx + '" y1="' + gy + '" x2="' + (gx - 2) + '" y2="' + (gy + gl) + '" stroke="#cfe6ff" stroke-width="1.2" opacity=".5" style="animation-duration:' + r.entre(1.2, 2.2).toFixed(2) + 's;animation-delay:-' + r.entre(0, 2).toFixed(2) + 's"/>';
+      }
     }
     return h;
   }
