@@ -11,6 +11,13 @@
  *   condition  : fonction (s) -> booléen (optionnel)
  *   visible    : fonction (s) -> booléen ; si faux, l'action est cachée
  *   info       : fonction (s) -> texte court affiché sous l'action (optionnel)
+ *   apercu     : objet, ou fonction (s) -> objet : ce que l'action peut rapporter
+ *                ou coûter dans la situation du moment, affiché en pastilles sur
+ *                la carte (informatif : c'est `effet` qui applique). Clés : les
+ *                jauges, argent, reputation, dette, chance (réussite de l'action),
+ *                xp ({ competence: points }), objets, ou un nom libre pour un
+ *                texte. Valeurs : nombre, [min, max], ou { val, chance, risque }.
+ *                Voir docs/06-actions.md.
  *   effet      : fonction (s) -> texte de résultat. Applique les
  *                changements avec NF.api.* ; le moteur calcule et affiche
  *                automatiquement les variations de jauges.
@@ -32,23 +39,113 @@
     return best;
   }
 
+  /* ----- Aperçus (champ `apercu`) -----
+   * Ces calculs servent deux fois : pour annoncer sur la carte ce que l'action
+   * peut rapporter dans la situation du moment, et pour le résultat réel dans
+   * `effet`. Une seule formule, donc jamais de carte qui ment. */
+
+  /** Fourchette [min, max] × multiplicateur, arrondie */
+  function plage(min, max, m) { m = m == null ? 1 : m; return [Math.round(min * m), Math.round(max * m)]; }
+  /** Points d'expérience d'une séance, trait « apprentissage » compris */
+  function xpVal(s, n) { return Math.round(n * C.modifTrait(s, 'apprentissage')); }
+
+  function multMendicite(s) {
+    var m = A.passif(s, 'mendicite') * C.modifTrait(s, 'mendicite') * C.efficacite(s);
+    m *= 0.75 + 0.5 * (s.joueur.reputation / 100);
+    m *= 0.6 + 0.4 * (s.joueur.jauges.hygiene / 100 + 0.5);
+    if (C.aLieu(s, 'gare')) m *= 1 + 0.25 * C.qualiteLieu(s, 'gare');
+    if (s.temps.mois === 11) m *= 1.35;           // décembre : générosité
+    if (C.saison(s) === 'ete') m *= 0.85;
+    return m;
+  }
+  /** « Chercher de la nourriture » : multiplicateur et lieux qui y contribuent */
+  function sourcesNourriture(s) {
+    var m = A.passif(s, 'fouille') * C.modifTrait(s, 'fouille'), lieux = [];
+    if (C.aLieu(s, 'marche')) { m *= 1 + 0.3 * C.qualiteLieu(s, 'marche'); lieux.push(NF.t('du marché')); }
+    if (C.aLieu(s, 'association')) { m *= 1 + 0.2 * C.qualiteLieu(s, 'association'); lieux.push(NF.t('de l\'association')); }
+    if (C.aLieu(s, 'eglise')) { m *= 1.15; lieux.push(NF.t('de la soupe populaire')); }
+    m *= 1 + 0.08 * C.niveauCompetence(s, 'cuisine');
+    return { m: m, lieux: lieux };
+  }
+  function multBoulot(s) {
+    var k = C.efficacite(s) * (1 + 0.12 * C.niveauCompetence(s, 'bricolage')) * (0.7 + 0.3 * s.conjoncture);
+    return C.aLieu(s, 'marche') ? k * 1.15 : k;
+  }
+  /** Chance d'avoir une place au foyer de nuit */
+  function placeFoyer(s) {
+    if (s.joueur.drapeaux.foyer_interdit) return 0;
+    var place = 0.85 * C.qualiteLieu(s, 'foyer');
+    if (C.saison(s) === 'hiver') place *= 0.65;
+    if (s.joueur.reputation >= 30) place += 0.1;
+    return place;
+  }
+  /** « Se reposer » : jauges récupérées selon le logement et la saison */
+  function repos(s) {
+    var l = C.logementActuel(s), energie = l.expose ? 45 : 55;
+    if (C.saison(s) === 'hiver' && l.expose) energie -= 6;
+    return { energie: energie, moral: l.expose ? 3 : 6, sante: l.expose ? 0 : 2 };
+  }
+  /** « Se laver » : où, pour combien, avec quel effet */
+  function toilette(s) {
+    var hiver = C.saison(s) === 'hiver';
+    if (!C.logementActuel(s).expose) return { hygiene: 45, texte: NF.t('Douche chaude, vêtements propres.') };
+    if (C.aLieu(s, 'bains')) return { hygiene: 38, texte: NF.t('Les bains-douches municipaux. Gratuit, et chaud.') };
+    if (C.aLieu(s, 'piscine') && s.joueur.argent >= 3) return { hygiene: 36, argent: -3, texte: NF.t('Entrée piscine à 3 €, pour la douche surtout.') };
+    if (C.aLieu(s, 'association')) return { hygiene: 32, texte: NF.t('La douche de l\'association, sur rendez-vous.') };
+    return { hygiene: 24, sante: hiver ? -2 : 0, texte: NF.t('Toilette à la fontaine. ') + (hiver ? NF.t('Glacé.') : '') };
+  }
+  /** Chance de réussite de la démarche du moment (papiers, domiciliation, puis aides) ; null s'il n'y a rien à demander */
+  function chanceDemarche(s) {
+    var adm = C.niveauCompetence(s, 'administratif');
+    if (s.joueur.drapeaux.papiers_perdus) return 0.5 + 0.12 * adm;
+    if (!s.joueur.domiciliation) return 0.45 + 0.12 * adm + (C.aLieu(s, 'association') ? 0.15 : 0) + (s.joueur.drapeaux.contact_association ? 0.15 : 0);
+    for (var id in NF.data.impots.aides) if (!s.joueur.aides[id] && C.aideEligible(s, id).ok) return 0.6 + 0.1 * adm;
+    return null;
+  }
+  function multContacts(s) { return C.modifTrait(s, 'social') * (1 + 0.1 * C.niveauCompetence(s, 'theatre')); }
+  function multSpectacle(s) {
+    var m = A.passif(s, 'spectacle') * C.modifTrait(s, 'social') * C.efficacite(s);
+    m *= 0.8 + 0.4 * (s.joueur.reputation / 100);
+    m *= 0.7 + 0.3 * (s.joueur.jauges.hygiene / 100);
+    if (C.aLieu(s, 'gare')) m *= 1 + 0.2 * C.qualiteLieu(s, 'gare');
+    if (C.aLieu(s, 'marche')) m *= 1 + 0.15 * C.qualiteLieu(s, 'marche');
+    if (s.temps.mois === 11) m *= 1.3;            // décembre : marchés de Noël
+    if (C.saison(s) === 'hiver') m *= 0.7;
+    return m;
+  }
+  function multPeche(s) {
+    var m = A.passif(s, 'peche') * (1 + 0.25 * C.niveauCompetence(s, 'peche')) * C.modifTrait(s, 'chance');
+    if (C.aLieu(s, 'parc')) m *= 1 + 0.25 * C.qualiteLieu(s, 'parc');
+    return C.saison(s) === 'hiver' ? m * 0.5 : m;
+  }
+  function multCueillette(s) {
+    var saison = { printemps: 0.9, ete: 1.1, automne: 1.5, hiver: 0.3 }[C.saison(s)];
+    return (1 + 0.25 * C.niveauCompetence(s, 'cueillette')) * saison * (0.8 + 0.4 * C.qualiteLieu(s, 'parc')) * C.modifTrait(s, 'fouille');
+  }
+  function multJardin(s) {
+    var saison = { printemps: 0.7, ete: 1.3, automne: 1.2, hiver: 0.25 }[C.saison(s)];
+    return (1 + 0.25 * C.niveauCompetence(s, 'jardinage')) * saison * (C.aLieu(s, 'parc') ? 0.8 + 0.4 * C.qualiteLieu(s, 'parc') : 0.6);
+  }
+  function multDessin(s) {
+    var m = A.passif(s, 'dessin') * C.efficacite(s) * (0.8 + 0.4 * (s.joueur.reputation / 100));
+    if (C.aLieu(s, 'gare')) m *= 1.15;
+    if (C.aLieu(s, 'marche')) m *= 1.15;
+    return C.saison(s) === 'ete' ? m * 1.25 : m;
+  }
+  function multAnimaux(s) {
+    return (1 + 0.3 * C.niveauCompetence(s, 'animaux')) * (0.8 + 0.4 * (s.joueur.reputation / 100)) * C.efficacite(s);
+  }
+
   NF.data.actions = [
 
     /* ======================= SURVIE ======================= */
     { id: 'mendier', nom: NF.t('Faire la manche'), icone: '🥣', categorie: 'survie',
       desc: NF.t('Tendre la main dans la rue ou à la sortie du métro.'),
-      cout: { energie: 2, moral: 2 },
       conditions: { logementOrdreMax: 3 },
       info: function (s) { return A.aObjet(s, 'panneau') ? NF.t('Votre panneau attire l\'œil.') : NF.t('Un panneau rendrait cela plus efficace.'); },
+      apercu: function (s) { return { argent: plage(14, 45, multMendicite(s)), energie: -2, moral: -2, police: { val: NF.t('🚔 contrôle'), chance: 0.08, risque: true } }; },
       effet: function (s) {
-        var base = r().entre(14, 45);
-        var m = A.passif(s, 'mendicite') * C.modifTrait(s, 'mendicite') * C.efficacite(s);
-        m *= 0.75 + 0.5 * (s.joueur.reputation / 100);
-        m *= 0.6 + 0.4 * (s.joueur.jauges.hygiene / 100 + 0.5);
-        if (C.aLieu(s, 'gare')) m *= 1 + 0.25 * C.qualiteLieu(s, 'gare');
-        if (s.temps.mois === 11) m *= 1.35;           // décembre : générosité
-        if (C.saison(s) === 'ete') m *= 0.85;
-        var gain = Math.round(base * m);
+        var gain = Math.round(r().entre(14, 45) * multMendicite(s));
         A.ajouterArgent(s, gain);
         A.modifierJauge(s, 'moral', -2);
         A.modifierJauge(s, 'energie', -2);
@@ -61,16 +158,11 @@
 
     { id: 'chercher_nourriture', nom: NF.t('Chercher de la nourriture'), icone: '🍞', categorie: 'survie',
       desc: NF.t('Invendus du marché, fin de service des restaurants, distributions.'),
-      cout: { hygiene: 3 },
       conditions: { logementOrdreMax: 3 },
+      apercu: function (s) { return { nourriture: plage(30, 52, sourcesNourriture(s).m), moral: 2, hygiene: -3, conserve: { val: NF.t('🍲 +1 conserve'), chance: 0.25 }, malade: { val: NF.t('🤢 malade'), chance: 0.06, risque: true } }; },
       effet: function (s) {
-        var base = r().entre(30, 52) * A.passif(s, 'fouille') * C.modifTrait(s, 'fouille');
-        var lieux = [];
-        if (C.aLieu(s, 'marche')) { base *= 1 + 0.3 * C.qualiteLieu(s, 'marche'); lieux.push(NF.t('du marché')); }
-        if (C.aLieu(s, 'association')) { base *= 1 + 0.2 * C.qualiteLieu(s, 'association'); lieux.push(NF.t('de l\'association')); }
-        if (C.aLieu(s, 'eglise')) { base *= 1.15; lieux.push(NF.t('de la soupe populaire')); }
-        base *= 1 + 0.08 * C.niveauCompetence(s, 'cuisine');
-        var gain = A.modifierJauge(s, 'nourriture', Math.round(base));
+        var src = sourcesNourriture(s), lieux = src.lieux;
+        var gain = A.modifierJauge(s, 'nourriture', Math.round(r().entre(30, 52) * src.m));
         A.modifierJauge(s, 'hygiene', -3);
         A.modifierJauge(s, 'moral', 2);
         if (r().chance(0.06)) { A.modifierJauge(s, 'sante', -6); return NF.t('Quelque chose n\'était plus bon. Vous êtes malade toute la nuit.'); }
@@ -80,9 +172,15 @@
 
     { id: 'fouiller', nom: NF.t('Fouiller les bennes'), icone: '🗑️', categorie: 'survie',
       desc: NF.t('Cartons, ficelle, ferraille, bouteilles : de quoi fabriquer.'),
-      cout: { energie: 3, hygiene: 5 },
       conditions: { logementOrdreMax: 4 },
       info: function (s) { return NF.t('Place libre : ') + A.placeLibre(s) + '/' + A.capaciteInventaire(s) + '.'; },
+      apercu: function (s) {
+        var min = 1, max = 3, p = A.passif(s, 'fouille');
+        if (C.aTrait(s, 'debrouillard')) { min++; max++; }
+        if (C.aLieu(s, 'zone')) max++;
+        if (C.aLieu(s, 'ressourcerie')) max++;
+        return { objets: [Math.round(min * p), Math.round(max * p)], energie: -3, hygiene: -5 };
+      },
       effet: function (s) {
         var nb = r().int(1, 3);
         if (C.aTrait(s, 'debrouillard')) nb++;
@@ -103,8 +201,11 @@
 
     { id: 'fouiller_poubelles', nom: NF.t('Fouiller les poubelles'), icone: '🚮', categorie: 'survie',
       desc: NF.t('Les poubelles des immeubles et des commerces : restes encore bons, pièces oubliées, petits objets.'),
-      cout: { hygiene: 7, moral: 2 },
       conditions: { logementOrdreMax: 3 },
+      apercu: function (s) {
+        var m = A.passif(s, 'fouille') * C.modifTrait(s, 'fouille');
+        return { nourriture: plage(6, 18, m), argent: { val: [2, 12], chance: 0.45 }, objets: { val: 1, chance: Math.min(0.9, 0.55 * m) }, hygiene: -7, moral: -2, blessure: { val: NF.t('🩹 blessure'), chance: 0.05, risque: true } };
+      },
       effet: function (s) {
         var m = A.passif(s, 'fouille') * C.modifTrait(s, 'fouille');
         var gainFaim = Math.round(r().entre(6, 18) * m);
@@ -124,12 +225,10 @@
 
     { id: 'petit_boulot', nom: NF.t('Petits boulots'), icone: '🧹', categorie: 'survie',
       desc: NF.t('Porter des cartons, laver des vitres, aider sur un marché. Payé de la main à la main.'),
-      cout: { energie: 10, hygiene: 4 },
       conditions: { jauges: { energie: { min: 10 } } },
+      apercu: function (s) { return { argent: plage(45, 110, multBoulot(s)), xp: { bricolage: 5 }, energie: -10, hygiene: -4, impaye: { val: NF.t('🚫 non payé'), chance: 0.08, risque: true } }; },
       effet: function (s) {
-        var gain = r().entre(45, 110) * C.efficacite(s) * (1 + 0.12 * C.niveauCompetence(s, 'bricolage')) * (0.7 + 0.3 * s.conjoncture);
-        if (C.aLieu(s, 'marche')) gain *= 1.15;
-        gain = Math.round(gain);
+        var gain = Math.round(r().entre(45, 110) * multBoulot(s));
         A.modifierJauge(s, 'energie', -10);
         A.modifierJauge(s, 'hygiene', -4);
         A.ajouterXp(s, 'bricolage', 5);
@@ -142,6 +241,7 @@
     { id: 'snack', nom: NF.t('Manger au snack'), icone: '🌯', categorie: 'survie', pa: 0,
       desc: NF.t('Un repas chaud tout de suite, pour 15 €. Ne coûte pas de point d\'action.'),
       conditions: { argentMin: 15 },
+      apercu: { argent: -15, nourriture: 14, moral: 2 },
       effet: function (s) {
         A.retirerArgent(s, 15, false);
         A.modifierJauge(s, 'nourriture', 14);
@@ -154,12 +254,10 @@
       desc: NF.t('Un lit, une douche et un repas, si une place se libère.'),
       conditions: { expose: true, lieu: 'foyer' },
       info: function (s) { return s.joueur.drapeaux.foyer_interdit ? NF.t('Vous êtes interdit de foyer pour le moment.') : (C.saison(s) === 'hiver' ? NF.t('L\'hiver, c\'est souvent complet.') : ''); },
+      apercu: function (s) { return { chance: placeFoyer(s), energie: 45, hygiene: 35, nourriture: 15, moral: 4, reputation: 1, vol: { val: NF.t('🕵️ vol'), chance: 0.1, risque: true } }; },
       effet: function (s) {
         if (s.joueur.drapeaux.foyer_interdit) return NF.t('Impossible : vous êtes interdit de foyer pour le moment.');
-        var place = 0.85 * C.qualiteLieu(s, 'foyer');
-        if (C.saison(s) === 'hiver') place *= 0.65;
-        if (s.joueur.reputation >= 30) place += 0.1;
-        if (!r().chance(place)) { A.modifierJauge(s, 'moral', -4); A.modifierJauge(s, 'energie', 8); A.modifierJauge(s, 'nourriture', 6); return NF.t('Complet. On vous renvoie dans la nuit avec une couverture de survie et un sandwich.'); }
+        if (!r().chance(placeFoyer(s))) { A.modifierJauge(s, 'moral', -4); A.modifierJauge(s, 'energie', 8); A.modifierJauge(s, 'nourriture', 6); return NF.t('Complet. On vous renvoie dans la nuit avec une couverture de survie et un sandwich.'); }
         A.modifierJauge(s, 'energie', 45);
         A.modifierJauge(s, 'hygiene', 35);
         A.modifierJauge(s, 'nourriture', 15);
@@ -171,32 +269,35 @@
 
     { id: 'se_reposer', nom: NF.t('Se reposer'), icone: '😴', categorie: 'soin',
       desc: NF.t('Dormir, récupérer, ne rien faire.'),
+      apercu: repos,
       effet: function (s) {
-        var l = C.logementActuel(s);
-        var gain = l.expose ? 45 : 55;
-        if (C.saison(s) === 'hiver' && l.expose) gain -= 6;
-        A.modifierJauge(s, 'energie', gain);
-        A.modifierJauge(s, 'moral', l.expose ? 3 : 6);
-        if (!l.expose) A.modifierJauge(s, 'sante', 2);
-        return l.expose ? NF.t('Vous dormez où vous pouvez, par à-coups.') : NF.t('De vraies nuits de sommeil.');
+        var g = repos(s);
+        A.modifierJauge(s, 'energie', g.energie);
+        A.modifierJauge(s, 'moral', g.moral);
+        if (g.sante) A.modifierJauge(s, 'sante', g.sante);
+        return C.logementActuel(s).expose ? NF.t('Vous dormez où vous pouvez, par à-coups.') : NF.t('De vraies nuits de sommeil.');
       } },
 
     { id: 'se_laver', nom: NF.t('Se laver'), icone: '🚿', categorie: 'soin',
       desc: NF.t('Bains-douches, piscine, fontaine… ou sa propre salle de bain.'),
+      apercu: function (s) { var t = toilette(s); return { hygiene: t.hygiene, argent: t.argent || 0, sante: t.sante || 0 }; },
       effet: function (s) {
-        var l = C.logementActuel(s);
-        if (!l.expose) { A.modifierJauge(s, 'hygiene', 45); return NF.t('Douche chaude, vêtements propres.'); }
-        if (C.aLieu(s, 'bains')) { A.modifierJauge(s, 'hygiene', 38); return NF.t('Les bains-douches municipaux. Gratuit, et chaud.'); }
-        if (C.aLieu(s, 'piscine') && s.joueur.argent >= 3) { A.retirerArgent(s, 3, false); A.modifierJauge(s, 'hygiene', 36); return NF.t('Entrée piscine à 3 €, pour la douche surtout.'); }
-        if (C.aLieu(s, 'association')) { A.modifierJauge(s, 'hygiene', 32); return NF.t('La douche de l\'association, sur rendez-vous.'); }
-        A.modifierJauge(s, 'hygiene', 24);
-        if (C.saison(s) === 'hiver') A.modifierJauge(s, 'sante', -2);
-        return NF.t('Toilette à la fontaine. ') + (C.saison(s) === 'hiver' ? NF.t('Glacé.') : '');
+        var t = toilette(s);
+        if (t.argent) A.retirerArgent(s, -t.argent, false);
+        A.modifierJauge(s, 'hygiene', t.hygiene);
+        if (t.sante) A.modifierJauge(s, 'sante', t.sante);
+        return t.texte;
       } },
 
     { id: 'se_soigner', nom: NF.t('Se faire soigner'), icone: '🏥', categorie: 'soin',
       desc: NF.t('Hôpital, permanence d\'accès aux soins, pharmacie.'),
       info: function (s) { return s.joueur.classe <= 2 ? NF.t('Gratuit à la permanence d\'accès aux soins, mais long.') : NF.t('Consultation : 25 €.'); },
+      apercu: function (s) {
+        var ap = { sante: 14 + 3 * C.niveauCompetence(s, 'soins') };
+        if (s.joueur.classe <= 2 || !C.aLieu(s, 'hopital')) ap.energie = -5; else ap.argent = -25;
+        if (s.joueur.maladie) ap.guerison = { val: NF.t('💊 guérison'), chance: 0.7 };
+        return ap;
+      },
       effet: function (s) {
         var gratuit = s.joueur.classe <= 2 || !C.aLieu(s, 'hopital');
         if (!gratuit) { if (s.joueur.argent < 25) return NF.t('Il faut 25 € pour la consultation.'); A.retirerArgent(s, 25, false); }
@@ -211,6 +312,7 @@
     { id: 'repas_association', nom: NF.t('Repas à l\'association'), icone: '🍲', categorie: 'soin',
       desc: NF.t('Un repas chaud, des visages familiers, des conseils.'),
       conditions: { logementOrdreMax: 2, lieu: 'association' },
+      apercu: { nourriture: 32, moral: 6, reputation: 1 },
       effet: function (s) {
         A.modifierJauge(s, 'nourriture', 32);
         A.modifierJauge(s, 'moral', 6);
@@ -221,7 +323,7 @@
 
     { id: 'sport', nom: NF.t('Marcher, courir, respirer'), icone: '🏃', categorie: 'soin',
       desc: NF.t('Le parc, les quais, n\'importe où. Bon pour la tête et le corps.'),
-      cout: { energie: 4, nourriture: 3 },
+      apercu: function (s) { return { sante: 3 + (C.aLieu(s, 'parc') ? 2 : 0) + C.niveauCompetence(s, 'sport'), moral: 9, energie: -4, nourriture: -3, xp: { sport: xpVal(s, 8) } }; },
       effet: function (s) {
         A.modifierJauge(s, 'sante', 3 + (C.aLieu(s, 'parc') ? 2 : 0) + C.niveauCompetence(s, 'sport'));
         A.modifierJauge(s, 'moral', 9);
@@ -234,7 +336,7 @@
     /* ======================= SOCIAL ET ADMINISTRATIF ======================= */
     { id: 'demarches', nom: NF.t('Démarches administratives'), icone: '📄', categorie: 'social',
       desc: NF.t('Domiciliation, aides, papiers. Lent, mais indispensable.'),
-      cout: { moral: 2 },
+      apercu: function (s) { var p = chanceDemarche(s); return { chance: p == null ? null : Math.min(1, p), moral: -2, xp: { administratif: xpVal(s, 15) } }; },
       info: function (s) {
         if (s.joueur.drapeaux.papiers_perdus) return NF.t('Objectif : refaire vos papiers.');
         if (!s.joueur.domiciliation) return NF.t('Objectif : obtenir une domiciliation (adresse administrative).');
@@ -242,21 +344,20 @@
         return dispo.length ? NF.t('Aides possibles : ') + dispo.join(', ') + '.' : NF.t('Rien de nouveau à demander pour l\'instant.');
       },
       effet: function (s) {
-        var adm = C.niveauCompetence(s, 'administratif');
+        var p = chanceDemarche(s);          // avant l'xp de la séance, qui peut faire monter le niveau
         A.ajouterXp(s, 'administratif', 15 * C.modifTrait(s, 'apprentissage'));
         A.modifierJauge(s, 'moral', -2);
         if (s.joueur.drapeaux.papiers_perdus) {
-          if (r().chance(0.5 + 0.12 * adm)) { A.effacerDrapeau(s, 'papiers_perdus'); return NF.t('Après des heures de guichet, vos papiers sont refaits.'); }
+          if (r().chance(p)) { A.effacerDrapeau(s, 'papiers_perdus'); return NF.t('Après des heures de guichet, vos papiers sont refaits.'); }
           return NF.t('Il manque une pièce. Revenez le mois prochain.');
         }
         if (!s.joueur.domiciliation) {
-          var p = 0.45 + 0.12 * adm + (C.aLieu(s, 'association') ? 0.15 : 0) + (s.joueur.drapeaux.contact_association ? 0.15 : 0);
           if (r().chance(p)) { s.joueur.domiciliation = true; A.journal(s, NF.t('📄 Domiciliation obtenue.'), 'bon'); return NF.t('Domiciliation accordée ! Vous avez enfin une adresse administrative : courrier, aides, emplois déclarés.'); }
           return NF.t('Dossier incomplet, file d\'attente, bureau fermé. Pas de domiciliation ce mois-ci.');
         }
         for (var id in NF.data.impots.aides) {
           if (!s.joueur.aides[id] && C.aideEligible(s, id).ok) {
-            if (r().chance(0.6 + 0.1 * adm)) { s.joueur.aides[id] = true; A.journal(s, NF.t('📄 Aide accordée : ') + id.toUpperCase() + '.', 'bon'); return NF.t('Aide accordée : ') + id.toUpperCase() + ' (' + U.euros(NF.data.impots.aides[id].montant) + NF.t('/mois).'); }
+            if (r().chance(p)) { s.joueur.aides[id] = true; A.journal(s, NF.t('📄 Aide accordée : ') + id.toUpperCase() + '.', 'bon'); return NF.t('Aide accordée : ') + id.toUpperCase() + ' (' + U.euros(NF.data.impots.aides[id].montant) + NF.t('/mois).'); }
             return NF.t('Demande de ') + id.toUpperCase() + NF.t(' déposée… dossier en attente de traitement.');
           }
         }
@@ -265,8 +366,9 @@
 
     { id: 'contacts', nom: NF.t('Nouer des contacts'), icone: '🤝', categorie: 'social',
       desc: NF.t('Parler aux gens : bénévoles, voisins, autres sans-abri, anciens collègues.'),
+      apercu: function (s) { return { reputation: plage(2, 6, multContacts(s)), moral: 4, rencontre: { val: NF.t('💬 rencontre'), chance: 0.3 } }; },
       effet: function (s) {
-        var gain = Math.round(r().entre(2, 6) * C.modifTrait(s, 'social') * (1 + 0.1 * C.niveauCompetence(s, 'theatre')));
+        var gain = Math.round(r().entre(2, 6) * multContacts(s));
         A.ajouterReputation(s, gain);
         A.modifierJauge(s, 'moral', 4);
         if (r().chance(0.3)) {
@@ -283,9 +385,9 @@
 
     { id: 'heures_sup', nom: NF.t('Heures supplémentaires'), icone: '⏱️', categorie: 'travail',
       desc: NF.t('Travailler davantage pour gagner un quart de salaire en plus.'),
-      cout: { energie: 15, moral: 4 },
       conditions: { emploi: true },
       condition: function (s) { var m = C.metierActuel(s); return m && m.pa >= 1; },
+      apercu: function (s) { return { argent: C.metierActuel(s) ? Math.round(s.joueur.emploi.salaire * 0.25) : 0, energie: -15, moral: -4 }; },
       effet: function (s) {
         var gain = Math.round(s.joueur.emploi.salaire * 0.25);
         A.ajouterArgent(s, gain);
@@ -297,6 +399,7 @@
     { id: 'rembourser', nom: NF.t('Rembourser sa dette'), icone: '💸', categorie: 'travail', pa: 0,
       desc: NF.t('Verser tout ce que vous pouvez pour réduire la dette.'),
       conditions: { dette: true, argentMin: 10 },
+      apercu: function (s) { var m = Math.min(s.joueur.dette, s.joueur.argent); return { argent: -m, dette: -m }; },
       effet: function (s) {
         var m = Math.min(s.joueur.dette, s.joueur.argent);
         A.retirerArgent(s, m, false);
@@ -309,6 +412,12 @@
       desc: NF.t('Être présent. Les relations se renforcent.'),
       condition: function (s) { return s.joueur.famille.partenaire || s.joueur.famille.enfants.length > 0; },
       visible: function (s) { return s.joueur.famille.partenaire || s.joueur.famille.enfants.length > 0; },
+      apercu: function (s) {
+        var f = s.joueur.famille, rel = [];
+        if (f.partenaire) rel.push('+9');
+        if (f.enfants.length) rel.push('+7');
+        return { moral: 7, relation: NF.t('👪 relation ') + rel.join(' / ') };
+      },
       effet: function (s) {
         var f = s.joueur.famille;
         if (f.partenaire) f.partenaire.relation = U.clamp(f.partenaire.relation + 9, 0, 100);
@@ -322,6 +431,7 @@
       desc: NF.t('Devoirs, lectures, sorties culturelles. Prépare la relève.'),
       condition: function (s) { return s.joueur.famille.enfants.some(function (e) { return e.age >= 36 && e.age < 18 * 12; }); },
       visible: function (s) { return s.joueur.famille.enfants.length > 0; },
+      apercu: function (s) { return { argent: s.joueur.argent >= 20 ? -20 : 0, xp: { lecture: 5 }, education: NF.t('🎓 éducation +') + (3 + C.niveauCompetence(s, 'lecture')), relation: NF.t('👪 relation +3') }; },
       effet: function (s) {
         A.drapeau(s, 'education_enfants', true);
         if (s.joueur.argent >= 20) A.retirerArgent(s, 20, false);
@@ -350,8 +460,14 @@
 
     { id: 'spectacle_rue', nom: NF.t('Spectacle de rue'), icone: '🎪', categorie: 'loisirs',
       desc: NF.t('Musique, jonglage, danse, magie ou théâtre : un chapeau au sol, et le public décide. Votre meilleur talent est utilisé.'),
-      cout: { energie: 6 },
       condition: function (s) { return talentRue(s).niveau >= 1; },
+      apercu: function (s) {
+        var t = talentRue(s);
+        if (!t.id) return null;
+        var ap = { argent: plage(12, 30, (1 + 0.35 * t.niveau) * multSpectacle(s)), moral: 4, energie: -6, reputation: { val: 2, chance: 0.15 }, xp: {}, police: { val: NF.t('🚔 contrôle'), chance: 0.05, risque: true } };
+        ap.xp[t.id] = xpVal(s, 10);
+        return ap;
+      },
       info: function (s) {
         var t = talentRue(s);
         if (!t.id) return NF.t('Il faut au moins le niveau 1 en musique, jonglage, danse, magie ou théâtre.');
@@ -360,15 +476,7 @@
       },
       effet: function (s) {
         var t = talentRue(s), c = U.byId(NF.data.competences, t.id);
-        var base = r().entre(12, 30) * (1 + 0.35 * t.niveau);
-        var m = A.passif(s, 'spectacle') * C.modifTrait(s, 'social') * C.efficacite(s);
-        m *= 0.8 + 0.4 * (s.joueur.reputation / 100);
-        m *= 0.7 + 0.3 * (s.joueur.jauges.hygiene / 100);
-        if (C.aLieu(s, 'gare')) m *= 1 + 0.2 * C.qualiteLieu(s, 'gare');
-        if (C.aLieu(s, 'marche')) m *= 1 + 0.15 * C.qualiteLieu(s, 'marche');
-        if (s.temps.mois === 11) m *= 1.3;            // décembre : marchés de Noël
-        if (C.saison(s) === 'hiver') m *= 0.7;
-        var gain = Math.round(base * m);
+        var gain = Math.round(r().entre(12, 30) * (1 + 0.35 * t.niveau) * multSpectacle(s));
         A.ajouterArgent(s, gain);
         A.modifierJauge(s, 'energie', -6);
         A.modifierJauge(s, 'moral', 4);
@@ -383,14 +491,15 @@
 
     { id: 'pecher', nom: NF.t('Pêcher'), icone: '🎣', categorie: 'loisirs',
       desc: NF.t('L\'étang du parc, le canal, les quais. Du calme, et parfois du poisson.'),
-      cout: { energie: 3 },
       info: function (s) { return A.aObjet(s, 'canne_a_peche') ? NF.t('Avec votre canne, les prises sont bien meilleures.') : NF.t('Sans canne à pêche, une ligne de fortune : prises modestes.'); },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'peche'), ap = { nourriture: plage(5, 14, multPeche(s)), moral: 5, energie: -3, xp: { peche: xpVal(s, 12) } };
+        if (niv >= 2) ap.argent = { val: plage(6, 14, niv * (C.aLieu(s, 'marche') ? 1.3 : 1)), chance: 0.25 + 0.1 * niv };
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'peche');
-        var m = A.passif(s, 'peche') * (1 + 0.25 * niv) * C.modifTrait(s, 'chance');
-        if (C.aLieu(s, 'parc')) m *= 1 + 0.25 * C.qualiteLieu(s, 'parc');
-        if (C.saison(s) === 'hiver') m *= 0.5;
-        var faim = Math.round(r().entre(5, 14) * m);
+        var faim = Math.round(r().entre(5, 14) * multPeche(s));
         A.modifierJauge(s, 'nourriture', faim);
         A.modifierJauge(s, 'moral', 5);
         A.modifierJauge(s, 'energie', -3);
@@ -404,14 +513,16 @@
 
     { id: 'cueillir', nom: NF.t('Cueillette'), icone: '🍄', categorie: 'loisirs',
       desc: NF.t('Champignons, mûres, châtaignes, plantes sauvages dans le parc et les friches. Selon la saison.'),
-      cout: { energie: 4, hygiene: 3 },
       conditions: { lieu: 'parc' },
       info: function (s) { var sa = C.saison(s); return sa === 'hiver' ? NF.t('En hiver, il n\'y a presque rien.') : sa === 'automne' ? NF.t('L\'automne : la meilleure saison.') : ''; },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'cueillette'), ap = { nourriture: plage(5, 13, multCueillette(s)), moral: 3, energie: -4, hygiene: -3, xp: { cueillette: xpVal(s, 12) }, intoxication: { val: NF.t('🤢 intoxication'), chance: Math.max(0.02, 0.14 - 0.03 * niv), risque: true } };
+        if (niv >= 2 && C.aLieu(s, 'marche')) ap.argent = { val: plage(5, 12, niv), chance: 0.2 + 0.1 * niv };
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'cueillette');
-        var saison = { printemps: 0.9, ete: 1.1, automne: 1.5, hiver: 0.3 }[C.saison(s)];
-        var m = (1 + 0.25 * niv) * saison * (0.8 + 0.4 * C.qualiteLieu(s, 'parc')) * C.modifTrait(s, 'fouille');
-        var faim = Math.round(r().entre(5, 13) * m);
+        var faim = Math.round(r().entre(5, 13) * multCueillette(s));
         A.modifierJauge(s, 'nourriture', faim);
         A.modifierJauge(s, 'moral', 3);
         A.modifierJauge(s, 'energie', -4);
@@ -426,14 +537,16 @@
 
     { id: 'jardiner', nom: NF.t('Jardiner'), icone: '🌱', categorie: 'loisirs',
       desc: NF.t('Une parcelle au jardin partagé du parc, ou quelques pots chez soi. Des légumes au fil des saisons.'),
-      cout: { energie: 6, hygiene: 4 },
       condition: function (s) { return C.aLieu(s, 'parc') || !C.logementActuel(s).expose; },
       info: function (s) { return C.aLieu(s, 'parc') ? NF.t('Jardin partagé du parc.') : (!C.logementActuel(s).expose ? NF.t('Quelques pots sur le rebord de la fenêtre.') : NF.t('Il faut un jardin partagé (parc) ou un vrai logement.')); },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'jardinage'), ap = { nourriture: plage(8, 20, multJardin(s)), moral: 5, energie: -6, hygiene: -4, xp: { jardinage: xpVal(s, 12) } };
+        if (niv >= 2) ap.conserve = { val: NF.t('🍲 +1 conserve'), chance: 0.15 + 0.1 * niv };
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'jardinage');
-        var saison = { printemps: 0.7, ete: 1.3, automne: 1.2, hiver: 0.25 }[C.saison(s)];
-        var m = (1 + 0.25 * niv) * saison * (C.aLieu(s, 'parc') ? 0.8 + 0.4 * C.qualiteLieu(s, 'parc') : 0.6);
-        var faim = Math.round(r().entre(8, 20) * m);
+        var faim = Math.round(r().entre(8, 20) * multJardin(s));
         A.modifierJauge(s, 'nourriture', faim);
         A.modifierJauge(s, 'moral', 5);
         A.modifierJauge(s, 'energie', -6);
@@ -447,16 +560,12 @@
 
     { id: 'dessiner', nom: NF.t('Dessiner et vendre des portraits'), icone: '🎨', categorie: 'loisirs',
       desc: NF.t('Croquer les passants, vendre ses dessins sur un bout de trottoir.'),
-      cout: { energie: 3 },
       conditions: { competences: { dessin: 1 } },
       info: function (s) { return A.aObjet(s, 'carnet_dessin') ? NF.t('Votre carnet et vos crayons font la différence.') : NF.t('Un carnet et des crayons aideraient.'); },
+      apercu: function (s) { var niv = C.niveauCompetence(s, 'dessin'); return { argent: plage(6, 16, niv * multDessin(s)), moral: 4, energie: -3, xp: { dessin: xpVal(s, 10) }, reputation: { val: 2, chance: 0.1 } }; },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'dessin');
-        var m = A.passif(s, 'dessin') * C.efficacite(s) * (0.8 + 0.4 * (s.joueur.reputation / 100));
-        if (C.aLieu(s, 'gare')) m *= 1.15;
-        if (C.aLieu(s, 'marche')) m *= 1.15;
-        if (C.saison(s) === 'ete') m *= 1.25;
-        var gain = Math.round(r().entre(6, 16) * niv * m);
+        var gain = Math.round(r().entre(6, 16) * niv * multDessin(s));
         A.ajouterArgent(s, gain);
         A.modifierJauge(s, 'moral', 4);
         A.modifierJauge(s, 'energie', -3);
@@ -468,8 +577,12 @@
 
     { id: 'ecrire', nom: NF.t('Écrire'), icone: '✍️', categorie: 'loisirs',
       desc: NF.t('Un carnet, un stylo, un banc. Poèmes, souvenirs, nouvelles. Avec du niveau, des textes se vendent.'),
-      cout: { energie: 2 },
       conditions: { competences: { lecture: 1 } },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'ecriture'), ap = { moral: 6 + niv, energie: -2, xp: { ecriture: xpVal(s, 12), lecture: 4 } };
+        if (niv >= 2) ap.argent = { val: plage(15, 40, niv), chance: 0.08 * niv };
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'ecriture');
         A.modifierJauge(s, 'moral', 6 + niv);
@@ -482,8 +595,12 @@
 
     { id: 'photographier', nom: NF.t('Photographier la ville'), icone: '📷', categorie: 'loisirs',
       desc: NF.t('Les quais à l\'aube, les visages du marché. Avec du niveau, des clichés se vendent.'),
-      cout: { energie: 4 },
       conditions: { telephone: true },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'photographie'), ap = { moral: 5, energie: -4, xp: { photographie: xpVal(s, 12) } };
+        if (niv >= 2) ap.argent = { val: plage(15, 35, niv * (A.aObjet(s, 'ordinateur') ? 1.3 : 1)), chance: 0.1 * niv };
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'photographie');
         A.modifierJauge(s, 'moral', 5);
@@ -495,8 +612,12 @@
 
     { id: 'coudre', nom: NF.t('Coudre et raccommoder'), icone: '🧵', categorie: 'loisirs',
       desc: NF.t('Recoudre ses vêtements, puis faire des retouches pour les autres.'),
-      cout: { energie: 2 },
       info: function (s) { return A.aObjet(s, 'necessaire_couture') ? NF.t('Avec votre nécessaire de couture, le travail est propre.') : NF.t('Un nécessaire de couture rendrait cela plus efficace.'); },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'couture'), m = A.passif(s, 'couture'), ap = { hygiene: Math.round(6 * m), moral: 2, energie: -2, xp: { couture: xpVal(s, 12) } };
+        if (niv >= 1) ap.argent = plage(5, 14, niv * m * (C.aLieu(s, 'ressourcerie') ? 1.2 : 1));
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'couture');
         var m = A.passif(s, 'couture');
@@ -510,11 +631,14 @@
 
     { id: 'garder_animaux', nom: NF.t('Promener et garder des animaux'), icone: '🐕', categorie: 'loisirs',
       desc: NF.t('Les chiens du quartier, le chat d\'une voisine en vacances. Payé de la main à la main.'),
-      cout: { energie: 5, hygiene: 3 },
       conditions: { reputationMin: 10 },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'animaux');
+        return { argent: plage(10, 28, multAnimaux(s)), moral: 5, energie: -5, hygiene: -3, xp: { animaux: xpVal(s, 12) }, reputation: { val: 2, chance: 0.12 }, morsure: { val: NF.t('🩹 morsure'), chance: Math.max(0.02, 0.08 - 0.015 * niv), risque: true } };
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'animaux');
-        var gain = Math.round(r().entre(10, 28) * (1 + 0.3 * niv) * (0.8 + 0.4 * (s.joueur.reputation / 100)) * C.efficacite(s));
+        var gain = Math.round(r().entre(10, 28) * multAnimaux(s));
         A.modifierJauge(s, 'moral', 5);
         A.modifierJauge(s, 'energie', -5);
         A.modifierJauge(s, 'hygiene', -3);
@@ -527,7 +651,11 @@
 
     { id: 'coiffer', nom: NF.t('Coiffer'), icone: '💇', categorie: 'loisirs',
       desc: NF.t('Se couper les cheveux proprement. Avec du niveau, coiffer les autres contre quelques pièces.'),
-      cout: { energie: 2 },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'coiffure'), ap = { hygiene: 8 + niv, moral: 3, energie: -2, xp: { coiffure: xpVal(s, 10) } };
+        if (niv >= 1) { ap.argent = plage(6, 15, niv * (0.8 + 0.4 * (s.joueur.reputation / 100))); ap.reputation = { val: 2, chance: 0.1 }; }
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'coiffure');
         A.modifierJauge(s, 'hygiene', 8 + niv);
@@ -540,9 +668,17 @@
 
     { id: 'jouer_echecs', nom: NF.t('Jouer aux échecs au parc'), icone: '♟️', categorie: 'loisirs',
       desc: NF.t('Les tables du parc, les habitués, de petites mises. On apprend en perdant.'),
-      cout: { energie: 2 },
       conditions: { lieu: 'parc' },
       info: function (s) { return s.joueur.argent >= 5 ? NF.t('Les parties se jouent avec une petite mise.') : NF.t('Sans argent, vous jouez pour l\'honneur.'); },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'jeux'), ap = { moral: 3, energie: -2, xp: { jeux: xpVal(s, 12) }, reputation: { val: 1, chance: 0.1 } };
+        if (s.joueur.argent >= 5) {
+          var mise = Math.min(s.joueur.argent, 8 + 2 * niv);
+          ap.argent = [-mise, Math.round(mise * 1.6)];
+          ap.victoire = { val: NF.t('🏆 victoire'), chance: Math.min(0.8, 0.3 + 0.1 * niv) * C.modifTrait(s, 'chance') };
+        }
+        return ap;
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'jeux');
         A.modifierJauge(s, 'moral', 3);
@@ -558,6 +694,7 @@
 
     { id: 'mediter', nom: NF.t('Méditer'), icone: '🧘', categorie: 'loisirs',
       desc: NF.t('S\'asseoir, respirer, laisser passer. Un moral plus stable, mois après mois.'),
+      apercu: function (s) { var niv = C.niveauCompetence(s, 'meditation'); return { moral: 5 + 2 * niv, energie: 4 + niv, sante: 1, xp: { meditation: xpVal(s, 12) } }; },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'meditation');
         A.modifierJauge(s, 'moral', 5 + 2 * niv);
@@ -569,7 +706,10 @@
 
     { id: 'quiz', nom: NF.t('Soirée quiz'), icone: '🏛️', categorie: 'loisirs',
       desc: NF.t('Les quiz des bars et de la bibliothèque. Des lots pour les meilleurs, des rencontres pour tous.'),
-      cout: { energie: 2 },
+      apercu: function (s) {
+        var niv = C.niveauCompetence(s, 'culture');
+        return { moral: 4, energie: -2, xp: { culture: xpVal(s, 10), lecture: 2 }, reputation: { val: 2, chance: Math.min(1, 0.2 * C.modifTrait(s, 'social')) }, argent: { val: [10 + 5 * niv, 30 + 5 * niv], chance: Math.min(0.75, 0.1 + 0.13 * niv) } };
+      },
       effet: function (s) {
         var niv = C.niveauCompetence(s, 'culture');
         A.modifierJauge(s, 'moral', 4);

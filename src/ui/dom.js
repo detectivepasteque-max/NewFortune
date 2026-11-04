@@ -61,13 +61,53 @@
     return '<span class="etiquette pa">' + n + NF.t(' PA</span>');
   };
 
-  /** Coûts fixes d'une action (champ `cout` de data/actions.js) : pastilles « ⚡ −10 » sur la carte */
-  UI.coutHtml = function (cout) {
-    if (!cout) return '';
-    var L = NF.api.LIBELLES;
-    return Object.keys(cout).map(function (k) {
-      return '<span class="etiquette cout" title="' + esc(L[k] ? L[k].nom : k) + '">' + (L[k] ? L[k].icone : '') + ' −' + cout[k] + '</span>';
-    }).join('');
+  /** Aperçu d'une action (champ `apercu` de data/actions.js) : pastilles vertes (gains),
+   *  rouges (coûts), orange (risques), bleue (chance de réussite). Voir docs/06-actions.md. */
+  UI.apercuHtml = function (s, a) {
+    var ap = U.val(a.apercu, s);
+    if (!ap) return '';
+    var L = NF.api.LIBELLES, ORDRE = ['argent', 'nourriture', 'energie', 'hygiene', 'moral', 'sante', 'reputation', 'dette', 'xp', 'objets'];
+    var tete = '', gains = [], couts = [], autres = [];
+    function nombre(n) { n = Math.round(n); return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
+    function fourchette(v, unite) {
+      if (typeof v === 'number') return nombre(v) + unite;
+      return nombre(v[0]) + NF.t(' à ') + (v[0] >= 0 && v[1] >= 0 ? Math.round(v[1]) : nombre(v[1])) + unite;
+    }
+    function pct(c) { return c == null || c >= 1 ? '' : ' (' + Math.round(c * 100) + NF.t(' %)'); }
+    function pastille(classe, titre, contenu) { return '<span class="etiquette ' + classe + '"' + (titre ? ' title="' + esc(titre) + '"' : '') + '>' + contenu + '</span>'; }
+    if (typeof ap.chance === 'number' && ap.chance < 1) tete = pastille('chance', NF.t('Chance de réussite'), '🎲 ' + Math.round(ap.chance * 100) + ' %');
+    var cles = ORDRE.filter(function (k) { return k in ap; }).concat(Object.keys(ap).filter(function (k) { return k !== 'chance' && ORDRE.indexOf(k) < 0; }));
+    cles.forEach(function (k) {
+      var v = ap[k], chance = null, risque = false;
+      if (v && typeof v === 'object' && !(v instanceof Array) && 'val' in v) { chance = v.chance; risque = !!v.risque; v = v.val; }
+      if (v == null || v === 0) return;
+      if (k === 'xp') {
+        for (var id in v) {
+          var c = U.byId(NF.data.competences, id);
+          if (v[id]) gains.push(pastille('gain', NF.t('Expérience : ') + (c ? c.nom : id), (c ? c.icone : '📈') + ' +' + Math.round(v[id]) + NF.t(' xp') + pct(chance)));
+        }
+        return;
+      }
+      if (k === 'objets') {
+        var n = typeof v === 'number' ? String(v) : Math.round(v[0]) + NF.t(' à ') + Math.round(v[1]);
+        gains.push(pastille('gain', NF.t('Objets trouvés'), '📦 ' + n + NF.t(' objet(s)') + pct(chance)));
+        return;
+      }
+      if (typeof v === 'string') { autres.push(pastille(risque ? 'risque' : 'neutre', '', esc(v) + pct(chance))); return; }
+      if (k in s.joueur.jauges) {                          // une jauge va de 0 à 100 : on annonce ce qui peut vraiment entrer ou sortir
+        var j = s.joueur.jauges[k], borne = function (x) { return Math.max(-j, Math.min(100 - j, x)); };
+        v = typeof v === 'number' ? borne(v) : [borne(v[0]), borne(v[1])];
+        if (typeof v !== 'number' && v[0] === v[1]) v = v[0];
+      }
+      if (typeof v !== 'number' && !v[0] && !v[1]) return;
+      if (typeof v === 'number' && !v) return;
+      var max = typeof v === 'number' ? v : Math.max(v[0], v[1]);
+      var bon = k === 'dette' ? max < 0 : max > 0;        // une dette qui baisse est une bonne nouvelle
+      var contenu = (L[k] ? L[k].icone + ' ' : '') + fourchette(v, k === 'argent' || k === 'dette' ? ' €' : '') + pct(chance);
+      (bon ? gains : couts).push(pastille(bon ? 'gain' : 'cout', L[k] ? L[k].nom : k, contenu));
+    });
+    var h = tete + gains.join('') + couts.join('') + autres.join('');
+    return h ? '<div class="carte-apercu" title="' + esc(NF.t('Ce que l\'action peut rapporter ou coûter dans votre situation, hors imprévus.')) + '">' + h + '</div>' : '';
   };
 
   /** Variations attendues en fin de mois (NF.core.usurePrevue), en pastilles signées */

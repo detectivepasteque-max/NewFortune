@@ -12,7 +12,9 @@ directement des fonctions du moteur (`postuler`, `changerLogement`, `etudier`,
   categorie: 'soin',        // survie | soin | social | travail | loisirs | famille (onglets de filtre)
   desc: 'Le parc, les quais, n\'importe où.',
   pa: 1,                    // coût en PA (0 = gratuit)
-  cout: { energie: 4 },     // optionnel : coûts fixes affichés sur la carte (« ⚡ −4 ») ; informatif, c'est `effet` qui les applique
+  apercu: function (s) {    // optionnel : ce que l'action peut rapporter ou coûter, en pastilles sur la carte (voir plus bas)
+    return { sante: 3 + NF.core.niveauCompetence(s, 'sport'), moral: 9, energie: -4, nourriture: -3, xp: { sport: 8 } };
+  },
   conditions: { logementOrdreMax: 3 },           // déclaratif (voir 03-evenements.md)
   condition: function (s) { return true; },      // optionnel
   visible: function (s) { return true; },        // optionnel : cacher l'action
@@ -34,6 +36,34 @@ dans `NF.t('…')` pour être traduits (`return NF.t('Une longue marche.')` ;
 **Échec sans dépenser de PA** : retournez un texte commençant par `Impossible`,
 `Il faut`, `Il vous manque`, `Plus de place`, `Vous n'avez pas`… (liste dans
 `src/core/tour.js`, fonction `actionGenerique`).
+
+## L'aperçu sur la carte (`apercu`)
+
+Chaque carte annonce ce que l'action peut rapporter ou coûter **dans la
+situation du moment** (réputation, lieux de la ville, saison, niveau de
+compétence…) : pastilles vertes pour les gains, rouges pour les coûts,
+orange pour les risques, bleue pour la chance de réussite. C'est purement
+informatif : `effet` reste seul à appliquer les changements. Pour que la
+carte ne mente jamais, les formules sont partagées : `data/actions.js`
+définit des fonctions (`multMendicite`, `multPeche`, `toilette`…) utilisées à
+la fois par `apercu` et par `effet`.
+
+`apercu` est un objet, ou une fonction `(s) -> objet` (ou `null` pour ne rien
+afficher). Clés possibles :
+
+| Clé | Affichage |
+| --- | --- |
+| `argent`, `nourriture`, `energie`, `hygiene`, `moral`, `sante`, `reputation`, `dette` | « 💶 +14 à 45 € », « ⚡ −10 » (icône et nom de `NF.api.LIBELLES`) |
+| `chance` | chance de réussite de l'action entière, « 🎲 55 % » (omise si ≥ 1) |
+| `xp` | `{ peche: 12, lecture: 4 }` → « 🎣 +12 xp » (icône de la compétence) |
+| `objets` | « 📦 1 à 3 objet(s) » |
+| tout autre nom | texte libre, tel quel : `rencontre: { val: '💬 rencontre', chance: 0.3 }` |
+
+Valeurs possibles : un nombre (`-10`), une fourchette `[min, max]`, ou
+`{ val, chance, risque }` où `val` est l'une des deux formes précédentes (ou
+un texte), `chance` ajoute « (45 %) », et `risque: true` colore la pastille
+en orange. Les zéros ne sont pas affichés. La fonction `plage(min, max,
+multiplicateur)` de `data/actions.js` fabrique une fourchette arrondie.
 
 **Déclencher un événement depuis une action** :
 `NF.core.forcerEvenement(s, 'id')` ; il s'affichera immédiatement après

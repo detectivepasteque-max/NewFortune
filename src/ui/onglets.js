@@ -54,7 +54,8 @@
       if (v.ok && typeof a.condition === 'function' && !a.condition(s)) { v.ok = false; v.raisons.push(NF.t('indisponible')); }
       var possible = v.ok && s.pa >= pa;
       var info = a.info ? a.info(s) : '';
-      h += '<div class="carte' + (possible ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + a.icone + '</span><strong>' + esc(a.nom) + '</strong>' + UI.etiquettePa(pa) + UI.coutHtml(a.cout) + '</div>';
+      h += '<div class="carte' + (possible ? '' : ' inactive') + '"><div class="carte-titre"><span class="carte-icone">' + a.icone + '</span><strong>' + esc(a.nom) + '</strong>' + UI.etiquettePa(pa) + '</div>';
+      h += UI.apercuHtml(s, a);
       h += '<div class="carte-desc">' + esc(a.desc) + (info ? '<br><span class="tres-petit accent">' + esc(info) + '</span>' : '') + '</div>';
       if (!v.ok) h += '<div class="raisons">' + esc(v.raisons.join(', ')) + '</div>';
       h += '<div class="carte-pied">' + UI.btn('action', a.id, NF.t('Faire'), 'btn-petit btn-principal', !possible) + '</div></div>';
